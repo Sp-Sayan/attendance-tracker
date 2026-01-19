@@ -12,6 +12,20 @@ export default function _layout() {
           headerShown: false,
         }}
       />
+      <Tabs.Screen
+        name="ClassScreen"
+        options={{
+          title: "Classes",
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="ProfileScreen"
+        options={{
+          title: "Profile",
+          headerShown: false,
+        }}
+      />
     </Tabs>
   );
 }
