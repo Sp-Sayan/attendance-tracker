@@ -13,8 +13,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { Announcement } from "@/types/announcement";
+import { useLocalSearchParams } from "expo-router";
 
 export default function Announcements() {
+  //extract class id from params
+  const { classID } = useLocalSearchParams<{ classID: string }>();
+
   const [modalVisible, setModalVisible] = useState(false);
   const [announcementData, setAnnouncementData] = useState<Announcement[]>([
     {

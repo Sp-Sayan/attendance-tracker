@@ -4,7 +4,13 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <Stack>
+      <Stack
+        screenOptions={{
+          contentStyle: {
+            flex: 1,
+          },
+        }}
+      >
         <Stack.Screen
           name="(tabs)"
           options={{
@@ -12,17 +18,18 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
-          name="class-details"
-          options={{
-            headerShown: true,
-            title: "Class Name",
-            headerShadowVisible: false,
-            headerStyle: {
-              backgroundColor: "transparent",
-            },
-            contentStyle: {
-              flex: 1,
-            },
+          name="[classID]"
+          options={({ route }) => {
+            const params = route.params as { classID?: string };
+
+            return {
+              headerShown: true,
+              title: params?.classID ?? "Class",
+              headerShadowVisible: true,
+              headerStyle: {
+                backgroundColor: "transparent",
+              },
+            };
           }}
         />
       </Stack>

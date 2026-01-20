@@ -68,11 +68,11 @@ export default function ClassScreen() {
 
       {/* ---------- SEARCH BAR ---------- */}
       <View className="flex-row items-center px-5 mt-4 gap-3">
-        <View className="flex-1 bg-card rounded-xl px-4 py-3">
+        <View className="flex-1 bg-card rounded-xl px-4 py-3 elevation-sm">
           <TextInput
             placeholder="Search classes..."
             placeholderTextColor="#000"
-            className="text-foreground"
+            className="text-foreground "
           />
         </View>
 
@@ -89,65 +89,58 @@ export default function ClassScreen() {
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
           <Pressable
-            onPress={() => router.push("/class-details/Announcements")}
+            onPress={() =>
+              router.push({
+                pathname: `/[classID]/Announcements`,
+                params: {
+                  classID: item.id,
+                },
+              })
+            }
             className="mb-4"
           >
-          <View className="bg-card rounded-2xl p-4 mb-4 border border-border">
+            <View className="bg-card rounded-2xl p-4 mb-4 border border-border">
+              {/* Title & Icon */}
+              <View className="flex-row justify-between items-center">
+                <View>
+                  <Text className="text-lg font-bold text-foreground">
+                    {item.title}
+                  </Text>
+                  <Text className="text-sm text-mutedForeground mt-1">
+                    {item.teacher}
+                  </Text>
+                </View>
 
-            {/* Title & Icon */}
-            <View className="flex-row justify-between items-center">
-              <View>
-                <Text className="text-lg font-bold text-foreground">
-                  {item.title}
-                </Text>
-                <Text className="text-sm text-mutedForeground mt-1">
-                  {item.teacher}
-                </Text>
+                <Ionicons name="people-outline" size={20} color="black" />
               </View>
 
-              <Ionicons name="people-outline" size={20} color="black" />
-              </View>
+              {/* Time, Students & Arrow */}
+              <View className="flex-row justify-between mt-4">
+                <View className="flex-row items-center gap-2">
+                  <Ionicons name="time-outline" size={16} color="black" />
+                  <Text className="text-sm text-foreground">
+                    {item.startTime} - {item.endTime}
+                  </Text>
+                </View>
 
-            
-            
-            {/* Time, Students & Arrow */}
-            <View className="flex-row justify-between mt-4">
-              <View className="flex-row items-center gap-2">
-                <Ionicons name="time-outline" size={16} color="black" />
-                <Text className="text-sm text-foreground">
-                  {item.startTime} - {item.endTime}
-                </Text>
-              </View>
+                <View className="flex-row items-center gap-2">
+                  <Ionicons name="people-outline" size={16} color="black" />
+                  <Text className="text-sm text-foreground">
+                    {item.studentCount} Students
+                  </Text>
+                </View>
 
-              <View className="flex-row items-center gap-2">
-                <Ionicons name="people-outline" size={16} color="black" />
-                <Text className="text-sm text-foreground">
-                  {item.studentCount} Students
-                </Text>
-              </View>
-
-               {/* Arrow Icon */}
+                {/* Arrow Icon */}
                 <Ionicons
                   name="arrow-forward-outline"
                   size={18}
                   color="black"
                 />
+              </View>
             </View>
-          </View>
-           </Pressable>
+          </Pressable>
         )}
       />
-
-      {/* Inside Class */}
-      <View className="flex-1 justify-center items-center">
-        <Pressable
-          onPress={() => {
-            router.push("/class-details/Announcements");
-          }}
-        >
-          <Text>Inside Class</Text>
-        </Pressable>
-      </View>
     </SafeAreaView>
   );
 }
