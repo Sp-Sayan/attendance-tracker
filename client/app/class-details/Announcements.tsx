@@ -5,19 +5,18 @@ import {
   Pressable,
   Modal,
   FlatList,
+  Image,
 } from "react-native";
 import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Ionicons from "@expo/vector-icons/Ionicons";
-import AnnouncementCard from "@/components/AnnouncementCard";
+
 import { Announcement } from "@/types/announcement";
 
 export default function Announcements() {
   const [modalVisible, setModalVisible] = useState(false);
-
-  //announcement data
-  const announcementData: Announcement[] = [
+  const [announcementData, setAnnouncementData] = useState<Announcement[]>([
     {
       id: 1,
       senderName: "John Doe",
@@ -45,7 +44,7 @@ export default function Announcements() {
         "Don't forget that the mid-term project submission deadline has been extended to next Friday. Please check the updated guidelines in the resources folder.",
       timestamp: "10:42AM",
     },
-  ];
+  ]);
 
   const handleOnPressAddAnnouncements = () => {
     setModalVisible(true);
@@ -95,14 +94,44 @@ export default function Announcements() {
             </Text>
           </View>
         </Pressable>
+
         {/* Announcements List */}
         <FlatList
           className="w-full"
           contentContainerClassName="items-center"
           data={announcementData}
-          renderItem={({ item }) => <AnnouncementCard {...item} />}
+          renderItem={({ item }) => <AnnouncementCard item={item} />}
         />
       </View>
     </SafeAreaView>
+  );
+}
+
+function AnnouncementCard({ item }: { item: Announcement }) {
+  return (
+    <View className="announcement-container p-5 w-[90%] min-h-[30%] mt-5 mb-5 bg-white rounded-xl">
+      <View className="announcement-header w-full flex-row items-center gap-4">
+        <Image
+          className="object-cover h-16 w-16 rounded-full"
+          source={item.senderProfilePic}
+        />
+        <View className="sender-info">
+          <Text className="sender-name font-bold text-xl">
+            {item.senderName}
+          </Text>
+          <Text className="sender-profession text-mutedForeground/60 text-sm">
+            {item.senderProfession}
+          </Text>
+        </View>
+      </View>
+      <View className="w-full h-fit my-3">
+        <Text className="p-2 text-justify">{item.message}</Text>
+      </View>
+      <View className="w-full items-start p-2 ">
+        <Text className="text-sm text-mutedForeground/60">
+          {item.timestamp}
+        </Text>
+      </View>
+    </View>
   );
 }
