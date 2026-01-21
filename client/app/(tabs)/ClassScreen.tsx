@@ -51,24 +51,48 @@ export default function ClassScreen() {
         endTime: "05:30 PM",
         studentCount: 64,
       },
+      {
+        id: "5",
+        title: "Computer Science",
+        teacher: "Dr. Emily Chen",
+        startTime: "02:00 PM ",
+        endTime: "03:00 PM",
+        studentCount: 42,
+      },
+      {
+        id: "6",
+        title: "Advanced Mathematics",
+        teacher: "Dr. Sarah Wilson",
+        startTime: "10:00 AM",
+        endTime: "11:30 AM",
+        studentCount: 34,
+      },
+      {
+        id: "7",
+        title: "English Literature",
+        teacher: "Prof. Robert Brown",
+        startTime: "04:00 PM",
+        endTime: "05:30 PM",
+        studentCount: 64,
+      },
     ]);
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView edges={["top"]} className="flex-1 bg-background">
       {/* ---------- HEADER ---------- */}
       <View className="flex-row justify-between items-center px-5 pt-4">
         <Text className="text-2xl font-bold text-foreground">My Classes</Text>
 
-        <View className="flex-row items-center gap-2">
+        <View className="flex-row items-center gap-2 p-1 rounded-lg">
           <Ionicons name="people-outline" size={18} color="black" />
           <Text className="text-sm text-foreground">Student Mode</Text>
         </View>
       </View>
 
       {/* ---------- SEARCH BAR ---------- */}
-      <View className="flex-row items-center px-5 mt-4 gap-3">
-        <View className="flex-1 bg-card rounded-xl px-4 py-3 elevation-sm">
+      <View className="flex-row items-center px-5 mt-4 mb-1 gap-3">
+        <View className="flex-1 bg-white rounded-xl px-4 py-3 shadow-sm elevation-sm">
           <TextInput
             placeholder="Search classes..."
             placeholderTextColor="#000"
@@ -83,6 +107,7 @@ export default function ClassScreen() {
 
       {/* ---------- CLASS LIST ---------- */}
       <FlatList
+        className="pt-2"
         data={classes}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 20 }}
@@ -94,12 +119,13 @@ export default function ClassScreen() {
                 pathname: `/[classID]/Announcements`,
                 params: {
                   classID: item.id,
+                  className: item.title,
                 },
               })
             }
-            className="mb-4"
+            className="mb-4 rounded-2xl"
           >
-            <View className="bg-card rounded-2xl p-4 mb-4 border border-border">
+            <View className="bg-white shadow-lg elevation-lg rounded-2xl p-4 mb-4 ">
               {/* Title & Icon */}
               <View className="flex-row justify-between items-center">
                 <View>
