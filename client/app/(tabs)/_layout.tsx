@@ -1,6 +1,6 @@
 import { View, Text, Pressable } from "react-native";
 import React from "react";
-import { Tabs } from "expo-router";
+import { Tabs, usePathname } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/theme/colors";
 
@@ -44,9 +44,10 @@ export default function MainTabLayout() {
   );
 }
 
-//BUG -
-const SpecialTabButton = (props: any) => {
-  const focused = props.accessibilityState?.selected === true;
+//BUG
+const SpecialTabButton = ({ onPress }: any) => {
+  const pathName = usePathname();
+  const focused = pathName.startsWith("/ClassScreen");
 
   return (
     <View style={{ flex: 1, alignItems: "center" }}>
@@ -65,15 +66,15 @@ const SpecialTabButton = (props: any) => {
         }}
       >
         <Pressable
-          {...props}
-          onPress={props.onPress}
+          onPress={onPress}
           style={{
             height: 60,
             width: 60,
             borderRadius: 35,
-            backgroundColor: colors.primary,
+            backgroundColor: focused ? colors.primary : colors.mutedForeground,
             alignItems: "center",
             justifyContent: "center",
+            elevation: 5,
           }}
         >
           <Ionicons name="book-outline" size={32} color="white" />

@@ -6,21 +6,24 @@ import {
   TouchableOpacity,
   Pressable,
 } from "react-native";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { ClassItem } from "@/types/classes";
 export default function ClassScreen() {
-  const [classes, setClasses] = React.useState<ClassItem[]>([]);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [isSearchEmpty, setIsSearchEmpty] = useState(true);
+  const [searchParams, setSearchParams] = useState<string>();
+  const [filteredClasses, setFilteredClasses] = useState<ClassItem[]>([]);
 
   useEffect(() => {
     // Simulating backend / input data
     setClasses([
       {
         id: "1",
-        title: "Advanced Mathematics",
-        teacher: "Dr. Sarah Wilson",
+        title: "Digital Communication",
+        teacher: "Prof. Moumita Sengupta",
         startTime: "10:00 AM",
         endTime: "11:30 AM",
         studentCount: 34,
@@ -78,6 +81,22 @@ export default function ClassScreen() {
     ]);
   }, []);
 
+  const handleSearch = (text: string) => {
+    //set search
+    setSearchParams(text);
+    //check for empty search bar
+    if (text.length > 0) setIsSearchEmpty(false);
+    else setIsSearchEmpty(true);
+
+    //search for classes
+    const data: ClassItem[] = classes.filter((item) =>
+      item.title.toLowerCase().includes(text.toLowerCase()),
+    );
+
+    //set filtered list
+    setFilteredClasses(data);
+  };
+
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-background">
       {/* ---------- HEADER ---------- */}
@@ -94,6 +113,7 @@ export default function ClassScreen() {
       <View className="flex-row items-center px-5 mt-4 mb-1 gap-3">
         <View className="flex-1 bg-white rounded-xl px-4 py-3 shadow-sm elevation-sm">
           <TextInput
+            onChangeText={handleSearch}
             placeholder="Search classes..."
             placeholderTextColor="#000"
             className="text-foreground "
@@ -108,7 +128,7 @@ export default function ClassScreen() {
       {/* ---------- CLASS LIST ---------- */}
       <FlatList
         className="pt-2"
-        data={classes}
+        data={isSearchEmpty ? classes : filteredClasses}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 20 }}
         showsVerticalScrollIndicator={false}

@@ -22,7 +22,6 @@ export default function InsideClassLayout() {
       <Tabs
         screenOptions={{
           tabBarPosition: "top",
-
           tabBarStyle: {
             marginTop: 12,
             marginBottom: 8,
