@@ -44,7 +44,7 @@ export default function MainTabLayout() {
   );
 }
 
-//BUG
+//Class tab button
 const SpecialTabButton = ({ onPress }: any) => {
   const pathName = usePathname();
   const focused = pathName.startsWith("/ClassScreen");
