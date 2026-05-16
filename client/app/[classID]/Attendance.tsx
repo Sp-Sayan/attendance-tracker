@@ -24,6 +24,7 @@ const Attendance: React.FC = () => {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
   const [attendanceMarked, setAttendanceMarked] = useState<boolean>(false);
+  const [isAttendanceEnabled, setIsAttendanceEnabled] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<string>("");
   const [currentDate, setCurrentDate] = useState<string>("");
 
@@ -92,10 +93,7 @@ const Attendance: React.FC = () => {
         <View className="px-6 pt-6">
           {/* Class Info */}
           <View className="mb-6">
-            <Text className="text-3xl font-black text-foreground">
-              {className}
-            </Text>
-            <Text className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">
+            <Text className="text-slate-400 font-bold text-xs text-center uppercase tracking-widest mt-1">
               ID: {classID}
             </Text>
           </View>
@@ -129,13 +127,15 @@ const Attendance: React.FC = () => {
                 <Text className="text-slate-500 text-[10px] font-black uppercase mb-1">
                   Status
                 </Text>
-                <Text className="text-emerald-400 font-bold">READY</Text>
+                <Text className={`${isAttendanceEnabled ? "text-emerald-400" : "text-amber-400"} font-bold`}>
+                  {isAttendanceEnabled ? "ACTIVE" : "READY"}
+                </Text>
               </View>
               <View className="items-center">
                 <Text className="text-slate-500 text-[10px] font-black uppercase mb-1">
                   Secure
                 </Text>
-                <Ionicons name="shield-checkmark" size={16} color="#059669" />
+                <Ionicons name="shield-checkmark" size={16} color={isAttendanceEnabled ? "#059669" : "#94a3b8"} />
               </View>
             </View>
           </View>
@@ -152,14 +152,14 @@ const Attendance: React.FC = () => {
                 {authUser?.name}
               </Text>
               <Text className="text-slate-400 font-bold text-xs uppercase tracking-wider mt-1">
-                Verification Required
+                {authUser?.role === "TEACHER" ? "Instructor Privileges" : "Verification Required"}
               </Text>
             </View>
           </View>
 
           {/* Selection Area */}
           <Text className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 ml-4">
-            Terminal Selection
+            {authUser?.role === "TEACHER" ? "Session Control" : "Terminal Selection"}
           </Text>
 
           <TouchableOpacity
@@ -220,30 +220,54 @@ const Attendance: React.FC = () => {
 
           {/* Action Button */}
           <View className="mt-12">
-            <TouchableOpacity
-              disabled={!selectedRoom}
-              onPress={handleBiometric}
-              activeOpacity={0.9}
-              className={`rounded-[32px] overflow-hidden shadow-2xl ${selectedRoom ? "shadow-primary/40" : ""}`}
-            >
-              <View
-                className={`p-8 items-center flex-row justify-center ${selectedRoom ? "bg-primary" : "bg-slate-200"}`}
+            {authUser?.role === "TEACHER" ? (
+              <TouchableOpacity
+                disabled={!selectedRoom}
+                onPress={() => setIsAttendanceEnabled(!isAttendanceEnabled)}
+                activeOpacity={0.9}
+                className={`rounded-[32px] overflow-hidden shadow-2xl ${selectedRoom ? (isAttendanceEnabled ? "shadow-amber-400/40" : "shadow-primary/40") : ""}`}
               >
-                <Ionicons
-                  name="finger-print"
-                  size={28}
-                  color={selectedRoom ? "white" : "#94a3b8"}
-                />
-                <Text
-                  className={`ml-4 text-xl font-black tracking-wide ${selectedRoom ? "text-white" : "text-slate-400"}`}
+                <View
+                  className={`p-8 items-center flex-row justify-center ${selectedRoom ? (isAttendanceEnabled ? "bg-amber-500" : "bg-primary") : "bg-slate-200"}`}
                 >
-                  VERIFY & MARK
-                </Text>
-              </View>
-            </TouchableOpacity>
+                  <Ionicons
+                    name={isAttendanceEnabled ? "stop-circle" : "play-circle"}
+                    size={28}
+                    color={selectedRoom ? "white" : "#94a3b8"}
+                  />
+                  <Text
+                    className={`ml-4 text-xl font-black tracking-wide ${selectedRoom ? "text-white" : "text-slate-400"}`}
+                  >
+                    {isAttendanceEnabled ? "DISABLE ATTENDANCE" : "ENABLE ATTENDANCE"}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                disabled={!selectedRoom}
+                onPress={handleBiometric}
+                activeOpacity={0.9}
+                className={`rounded-[32px] overflow-hidden shadow-2xl ${selectedRoom ? "shadow-primary/40" : ""}`}
+              >
+                <View
+                  className={`p-8 items-center flex-row justify-center ${selectedRoom ? "bg-primary" : "bg-slate-200"}`}
+                >
+                  <Ionicons
+                    name="finger-print"
+                    size={28}
+                    color={selectedRoom ? "white" : "#94a3b8"}
+                  />
+                  <Text
+                    className={`ml-4 text-xl font-black tracking-wide ${selectedRoom ? "text-white" : "text-slate-400"}`}
+                  >
+                    VERIFY & MARK
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
             {!selectedRoom && (
               <Text className="text-center text-slate-400 font-bold text-xs mt-4">
-                Please select a terminal to enable scan
+                Please select a {authUser?.role === "TEACHER" ? "room" : "terminal"} to {authUser?.role === "TEACHER" ? "start session" : "enable scan"}
               </Text>
             )}
           </View>
