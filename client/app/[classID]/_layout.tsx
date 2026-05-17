@@ -5,10 +5,13 @@ import { Tabs } from "expo-router";
 function TabLabel({ focused, title }: { focused: boolean; title: string }) {
   return (
     <View
-      className={`${focused ? "bg-primary " : "bg-transparent"} h-full w-full justify-center rounded-2xl`}
+      style={{ borderRadius: 16, overflow: "hidden" }}
+      className={`${focused ? "bg-primary" : "bg-transparent"} h-full w-full justify-center`}
     >
       <Text
-        className={`${focused ? "text-background" : "text-mutedForeground"} font-bold text-center`}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        className={`${focused ? "text-background" : "text-mutedForeground"} font-bold text-center text-[13px] px-1`}
       >
         {title}
       </Text>
@@ -30,7 +33,7 @@ export default function InsideClassLayout() {
             paddingTop: 0,
             borderRadius: 20,
             height: 60,
-            width: "90%",
+            width: "92%",
           },
 
           tabBarIconStyle: {
@@ -39,7 +42,7 @@ export default function InsideClassLayout() {
           tabBarItemStyle: {
             borderRadius: 16,
             overflow: "hidden",
-            marginHorizontal: 5,
+            marginHorizontal: 4,
           },
         }}
       >

@@ -76,6 +76,17 @@ export const endAttendanceSession = async (req, res) => {
     }
 };
 
+// export const fetchActiveAttendanceSessions = async (req, res) => {
+//     try {
+//         const teacherId = req.user.id;
+//         const result = await fetchAttendanceSessionsService(teacherId);
+//         res.status(200).json(result);
+//     } catch (error) {
+//         console.error("Error fetching sessions:", error);
+//         res.status(500).json({ message: "Internal Server Error" });
+//     }
+// };
+
 // export const generateAttendanceReport = async (req, res) => {
 //     try {
 //         const { fromDate, toDate } = req.body;
@@ -102,6 +113,8 @@ export const endAttendanceSession = async (req, res) => {
 //         res.status(500).json({ message: "Internal Server Error" });
 //     }
 // };
+
+
 
 // export const fetchStudentAttendance = async (req, res) => {
 //     try {

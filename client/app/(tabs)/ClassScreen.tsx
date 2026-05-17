@@ -346,7 +346,11 @@ export default function ClassScreen() {
             behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
             <View className="bg-background rounded-t-[40px] px-6 pt-6 pb-10 max-h-[90%]">
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView
+                scrollEnabled={role === "TEACHER" && !generatedId}
+                bounces={false}
+                showsVerticalScrollIndicator={false}
+              >
                 {/* HEADER */}
 
                 <View className="flex-row justify-between items-center mb-8">
@@ -489,7 +493,7 @@ export default function ClassScreen() {
                 ====================================================== */}
 
                 {role === "STUDENT" && (
-                  <View className="gap-5">
+                  <View className="gap-5 pb-10 ">
                     <TextInput
                       placeholder="Enter Class ID"
                       value={classId}

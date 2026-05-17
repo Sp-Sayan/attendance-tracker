@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,10 @@ import {
   Modal,
   Alert,
   ScrollView,
+  Platform,
+  PermissionsAndroid,
+  ActivityIndicator,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as LocalAuthentication from "expo-local-authentication";
@@ -13,6 +17,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAppSelector } from "@/redux/hooks/hooks";
 import { User } from "@/types/userType";
 import { useGlobalSearchParams } from "expo-router";
+import { BleManager, State } from "react-native-ble-plx";
+import { AttendanceState } from "@/types/attendance";
+
+enum OTPState {
+  PENDING = "PENDING",
+  SCANNING = "SCANNING",
+  FAILED = "FAILED",
+  NOT_FOUND = "NOT_FOUND",
+}
 
 const rooms: string[] = ["Room 101", "Room 102", "Room 103", "Room 104"];
 
@@ -24,11 +37,26 @@ const Attendance: React.FC = () => {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
   const [attendanceMarked, setAttendanceMarked] = useState<boolean>(false);
-  const [isAttendanceEnabled, setIsAttendanceEnabled] = useState<boolean>(false);
+  const [isAttendanceEnabled, setIsAttendanceEnabled] =
+    useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<string>("");
   const [currentDate, setCurrentDate] = useState<string>("");
+  const [sessionCreatedSuccess, setSessionCreatedSuccess] =
+    useState<boolean>(false);
+
+  // BLE State
+  const [bleOTP, setBleOTP] = useState<OTPState | string>(OTPState.PENDING);
+  const [biometricVerified, setBiometricVerified] = useState<boolean>(false);
+
+  // useRef ensures BleManager is created only ONCE, not on every re-render
+  const managerRef = useRef<BleManager>(new BleManager());
 
   const authUser: User | null = useAppSelector((state) => state.auth.authUser);
+  const attendance: AttendanceState | null = useAppSelector(
+    (state) => state.attendance,
+  );
+  // const [isMarkingAttendance, setIsMarkingAttendance] =
+  //   useState<boolean>(false);
 
   useEffect(() => {
     const updateTime = () => {
@@ -48,8 +76,109 @@ const Attendance: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Cleanup BLE manager on unmount only
+  useEffect(() => {
+    return () => {
+      managerRef.current.stopDeviceScan();
+      managerRef.current.destroy();
+    };
+  }, []);
+
+  const requestPermissions = async (): Promise<boolean> => {
+    if (Platform.OS === "android") {
+      const results = await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+      ]);
+
+      return (
+        results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] ===
+          PermissionsAndroid.RESULTS.GRANTED &&
+        results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] ===
+          PermissionsAndroid.RESULTS.GRANTED &&
+        results[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] ===
+          PermissionsAndroid.RESULTS.GRANTED
+      );
+    }
+    return true;
+  };
+
+  const scanForOTP = async () => {
+    console.log("Scanning for OTP");
+    try {
+      const hasPermissions = await requestPermissions();
+      if (!hasPermissions) {
+        setBleOTP(OTPState.FAILED);
+        Alert.alert(
+          "Permission Required",
+          "Bluetooth and Location permissions are required to scan for terminal beacons and log your attendance. Please enable them in your system settings.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Open Settings",
+              onPress: () => Linking.openSettings(),
+            },
+          ],
+        );
+        return;
+      }
+
+      // Check Bluetooth state
+      const bluetoothState = await managerRef.current.state();
+      if (bluetoothState !== State.PoweredOn) {
+        setBleOTP(OTPState.FAILED);
+        Alert.alert(
+          "Bluetooth Disabled",
+          "Bluetooth is currently turned off. Please enable Bluetooth on your device to scan for the terminal beacon.",
+          [{ text: "OK" }],
+        );
+        return;
+      }
+
+      setBleOTP(OTPState.SCANNING);
+
+      managerRef.current.startDeviceScan(null, null, (error, device) => {
+        console.log(device);
+        if (error) {
+          console.log("BLE Error:", error);
+          setBleOTP(OTPState.FAILED);
+          return;
+        }
+        if (device?.name?.startsWith("OTP-")) {
+          const otp = device.name.replace("OTP-", "");
+          setBleOTP(otp);
+          managerRef.current.stopDeviceScan();
+
+          handleAPIFunctionCalls();
+        }
+      });
+
+      setTimeout(() => {
+        managerRef.current.stopDeviceScan();
+        setBleOTP((prev) =>
+          prev === OTPState.SCANNING ? OTPState.NOT_FOUND : prev,
+        );
+      }, 15000);
+    } catch (e) {
+      console.log("BLE scan error (manager may have been destroyed):", e);
+      setBleOTP(OTPState.FAILED);
+    }
+  };
+
   const handleBiometric = async () => {
     if (!selectedRoom) return;
+
+    // Check Bluetooth state first before prompting for biometric
+    const bluetoothState = await managerRef.current.state();
+    if (bluetoothState !== State.PoweredOn) {
+      Alert.alert(
+        "Bluetooth Disabled",
+        "Bluetooth is currently turned off. Please enable Bluetooth on your device to scan for the terminal beacon.",
+        [{ text: "OK" }],
+      );
+      return;
+    }
 
     const hasHardware = await LocalAuthentication.hasHardwareAsync();
     if (!hasHardware) {
@@ -70,17 +199,56 @@ const Attendance: React.FC = () => {
     }
 
     const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: "Verify identity to mark attendance",
+      promptMessage:
+        authUser?.role === "STUDENT"
+          ? "Verify identity to mark attendance"
+          : isAttendanceEnabled
+            ? "Verify identity to end session"
+            : "Verify identity to start session",
       fallbackLabel: "Use Passcode",
     });
 
     if (result.success) {
-      setAttendanceMarked(true);
+      setBiometricVerified(true);
+      await scanForOTP();
     } else {
       Alert.alert(
         "Failed",
         "Authentication was unsuccessful. Please try again.",
       );
+    }
+  };
+
+  const handleMarkAttendance = async () => {
+    setBiometricVerified(false);
+    setAttendanceMarked(true);
+  };
+
+  const handleCreateSession = async () => {
+    if (!selectedRoom) return;
+    console.log("create session");
+    setTimeout(() => {
+      setSessionCreatedSuccess(true);
+    }, 4000);
+    setIsAttendanceEnabled(!isAttendanceEnabled);
+  };
+
+  const handleEndSession = async () => {
+    if (!selectedRoom) return;
+    console.log("end session");
+    setIsAttendanceEnabled(!isAttendanceEnabled);
+  };
+
+  const handleAPIFunctionCalls = async () => {
+    //call API functions
+    if (authUser?.role === "STUDENT") {
+      //call attendance api here
+      setTimeout(() => {
+        handleMarkAttendance();
+      }, 2500);
+    } else if (authUser?.role === "TEACHER") {
+      //call create session api here
+      handleCreateSession();
     }
   };
 
@@ -127,7 +295,9 @@ const Attendance: React.FC = () => {
                 <Text className="text-slate-500 text-[10px] font-black uppercase mb-1">
                   Status
                 </Text>
-                <Text className={`${isAttendanceEnabled ? "text-emerald-400" : "text-amber-400"} font-bold`}>
+                <Text
+                  className={`${isAttendanceEnabled ? "text-emerald-400" : "text-amber-400"} font-bold`}
+                >
                   {isAttendanceEnabled ? "ACTIVE" : "READY"}
                 </Text>
               </View>
@@ -135,7 +305,11 @@ const Attendance: React.FC = () => {
                 <Text className="text-slate-500 text-[10px] font-black uppercase mb-1">
                   Secure
                 </Text>
-                <Ionicons name="shield-checkmark" size={16} color={isAttendanceEnabled ? "#059669" : "#94a3b8"} />
+                <Ionicons
+                  name="shield-checkmark"
+                  size={16}
+                  color={isAttendanceEnabled ? "#059669" : "#94a3b8"}
+                />
               </View>
             </View>
           </View>
@@ -152,14 +326,18 @@ const Attendance: React.FC = () => {
                 {authUser?.name}
               </Text>
               <Text className="text-slate-400 font-bold text-xs uppercase tracking-wider mt-1">
-                {authUser?.role === "TEACHER" ? "Instructor Privileges" : "Verification Required"}
+                {authUser?.role === "TEACHER"
+                  ? "Instructor Privileges"
+                  : "Verification Required"}
               </Text>
             </View>
           </View>
 
           {/* Selection Area */}
           <Text className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 ml-4">
-            {authUser?.role === "TEACHER" ? "Session Control" : "Terminal Selection"}
+            {authUser?.role === "TEACHER"
+              ? "Session Control"
+              : "Terminal Selection"}
           </Text>
 
           <TouchableOpacity
@@ -223,7 +401,13 @@ const Attendance: React.FC = () => {
             {authUser?.role === "TEACHER" ? (
               <TouchableOpacity
                 disabled={!selectedRoom}
-                onPress={() => setIsAttendanceEnabled(!isAttendanceEnabled)}
+                onPress={() => {
+                  if (!isAttendanceEnabled) {
+                    handleBiometric();
+                  } else {
+                    handleEndSession();
+                  }
+                }}
                 activeOpacity={0.9}
                 className={`rounded-[32px] overflow-hidden shadow-2xl ${selectedRoom ? (isAttendanceEnabled ? "shadow-amber-400/40" : "shadow-primary/40") : ""}`}
               >
@@ -238,7 +422,9 @@ const Attendance: React.FC = () => {
                   <Text
                     className={`ml-4 text-xl font-black tracking-wide ${selectedRoom ? "text-white" : "text-slate-400"}`}
                   >
-                    {isAttendanceEnabled ? "DISABLE ATTENDANCE" : "ENABLE ATTENDANCE"}
+                    {isAttendanceEnabled
+                      ? "DISABLE ATTENDANCE"
+                      : "ENABLE ATTENDANCE"}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -267,7 +453,9 @@ const Attendance: React.FC = () => {
             )}
             {!selectedRoom && (
               <Text className="text-center text-slate-400 font-bold text-xs mt-4">
-                Please select a {authUser?.role === "TEACHER" ? "room" : "terminal"} to {authUser?.role === "TEACHER" ? "start session" : "enable scan"}
+                Please select a{" "}
+                {authUser?.role === "TEACHER" ? "room" : "terminal"} to{" "}
+                {authUser?.role === "TEACHER" ? "start session" : "enable scan"}
               </Text>
             )}
           </View>
@@ -275,7 +463,11 @@ const Attendance: React.FC = () => {
       </ScrollView>
 
       {/* Success Modal */}
-      <Modal transparent visible={attendanceMarked} animationType="fade">
+      <Modal
+        transparent
+        visible={attendanceMarked || sessionCreatedSuccess}
+        animationType="fade"
+      >
         <View className="flex-1 justify-center items-center bg-slate-900/90 px-10">
           <View className="bg-white p-10 rounded-[48px] w-full items-center shadow-2xl border-4 border-emerald-500/20">
             <View className="w-24 h-24 bg-emerald-100 rounded-[36px] items-center justify-center mb-8 shadow-inner">
@@ -283,18 +475,130 @@ const Attendance: React.FC = () => {
             </View>
 
             <Text className="text-3xl font-black text-foreground text-center mb-2">
-              Verified!
+              {sessionCreatedSuccess ? "Session Active!" : "Verified!"}
             </Text>
             <Text className="text-slate-500 font-bold text-center mb-10 leading-6">
-              Attendance for {selectedRoom} has been logged in the system.
+              {sessionCreatedSuccess
+                ? `Attendance session for ${selectedRoom} has been successfully created.`
+                : `Attendance for ${selectedRoom} has been logged in the system.`}
             </Text>
 
             <TouchableOpacity
-              onPress={() => setAttendanceMarked(false)}
+              onPress={() => {
+                setAttendanceMarked(false);
+                setSessionCreatedSuccess(false);
+                setBiometricVerified(false);
+                setBleOTP(OTPState.PENDING);
+              }}
               className="bg-slate-900 w-full py-5 rounded-3xl items-center shadow-lg"
             >
               <Text className="text-white font-black text-lg">Dismiss</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* BLE Scan Modal */}
+      <Modal
+        transparent
+        visible={
+          biometricVerified && !attendanceMarked && !sessionCreatedSuccess
+        }
+        animationType="fade"
+      >
+        <View className="flex-1 justify-center items-center bg-slate-900/90 px-10">
+          <View className="bg-white p-10 rounded-[48px] w-full items-center shadow-2xl border-4 border-primary/20">
+            {bleOTP === OTPState.SCANNING ? (
+              // 1. SCANNING STATE
+              <View className="items-center w-full">
+                <View className="w-24 h-24 bg-emerald-50 rounded-[36px] items-center justify-center mb-8 shadow-inner relative">
+                  <Ionicons name="radio-outline" size={48} color="#059669" />
+                </View>
+
+                <Text className="text-2xl font-black text-foreground text-center mb-3">
+                  Scanning for Terminal
+                </Text>
+
+                <Text className="text-slate-500 font-bold text-center mb-8 leading-6 px-2">
+                  Please stay close to the classroom terminal to sync OTP
+                  beacon.
+                </Text>
+
+                <View className="flex-row items-center justify-center bg-slate-50 px-6 py-4 rounded-2xl w-full border border-slate-100">
+                  <ActivityIndicator size="small" color="#059669" />
+                  <Text className="ml-3 font-bold text-slate-500 text-sm">
+                    Searching...
+                  </Text>
+                </View>
+              </View>
+            ) : bleOTP !== OTPState.PENDING &&
+              bleOTP !== OTPState.FAILED &&
+              bleOTP !== OTPState.NOT_FOUND ? (
+              // 2. OTP FETCHED & MARKING STATE
+              <View className="items-center w-full">
+                <View className="w-24 h-24 bg-emerald-100 rounded-[36px] items-center justify-center mb-8 shadow-inner">
+                  <Ionicons name="key-outline" size={44} color="#059669" />
+                </View>
+
+                <Text className="text-2xl font-black text-foreground text-center mb-1">
+                  OTP Fetched!
+                </Text>
+                <Text className="text-primary font-black text-3xl tracking-widest mb-6">
+                  {bleOTP}
+                </Text>
+
+                <Text className="text-slate-500 font-bold text-center mb-8 leading-6">
+                  Secure token received.
+                  {authUser?.role === "STUDENT"
+                    ? "Marking attendance..."
+                    : "Creating session..."}
+                </Text>
+
+                <View className="flex-row items-center justify-center bg-emerald-50 px-6 py-4 rounded-2xl w-full border border-emerald-100">
+                  <ActivityIndicator size="small" color="#059669" />
+                  <Text className="ml-3 font-black text-primary text-sm">
+                    {authUser?.role === "STUDENT"
+                      ? "Marking Attendance..."
+                      : "Creating session..."}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              // 3. ERROR STATE (Scan failed / Not found)
+              <View className="items-center w-full">
+                <View className="w-24 h-24 bg-rose-100 rounded-[36px] items-center justify-center mb-8 shadow-inner">
+                  <Ionicons name="warning-outline" size={44} color="#e11d48" />
+                </View>
+
+                <Text className="text-2xl font-black text-foreground text-center mb-3">
+                  Scan Failed
+                </Text>
+                <Text className="text-slate-500 font-bold text-center mb-10 leading-6 px-2">
+                  Could not find a terminal beacon nearby. Make sure the
+                  instructor's session is active.
+                </Text>
+
+                <View className="flex-row w-full gap-4">
+                  <TouchableOpacity
+                    onPress={() => setBiometricVerified(false)}
+                    className="flex-1 bg-slate-100 py-4 rounded-2xl items-center border border-slate-200"
+                  >
+                    <Text className="text-slate-700 font-bold text-base">
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={scanForOTP}
+                    className="flex-1 bg-primary py-4 rounded-2xl items-center shadow-md shadow-primary/20"
+                  >
+                    <Text className="text-white font-bold text-base">
+                      Retry
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
         </View>
       </Modal>

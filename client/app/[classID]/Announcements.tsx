@@ -141,25 +141,6 @@ export default function Announcements() {
           </View>
         </Modal>
 
-        {/* Create Announcement Action */}
-        <TouchableOpacity
-          onPress={handleOnPressAddAnnouncements}
-          activeOpacity={0.9}
-          className="mt-6 mb-8"
-        >
-          <View className="bg-white border-2 border-dashed border-primary/30 p-8 items-center rounded-[32px] shadow-sm">
-            <View className="bg-primary/10 w-12 h-12 rounded-2xl items-center justify-center mb-3">
-              <Ionicons name="megaphone" size={24} color="#059669" />
-            </View>
-            <Text className="font-black text-primary text-lg">
-              Share with the class
-            </Text>
-            <Text className="text-slate-400 font-bold text-xs mt-1 opacity-70">
-              Tap to create a new announcement
-            </Text>
-          </View>
-        </TouchableOpacity>
-
         {/* Announcements List */}
         <FlatList
           className="flex-1"
@@ -168,11 +149,32 @@ export default function Announcements() {
           showsVerticalScrollIndicator={false}
           data={announcementData}
           ListHeaderComponent={() => (
-            <View className="mb-6 flex-row items-center">
-              <Text className="text-sm font-black text-slate-400 uppercase tracking-[3px]">
-                Recent Updates
-              </Text>
-              <View className="flex-1 h-[1px] bg-slate-100 ml-4" />
+            <View>
+              {/* Create Announcement Action */}
+              <TouchableOpacity
+                onPress={handleOnPressAddAnnouncements}
+                activeOpacity={0.9}
+                className="mt-6 mb-8"
+              >
+                <View className="bg-white border-2 border-dashed border-primary/30 p-8 items-center rounded-[32px] shadow-sm">
+                  <View className="bg-primary/10 w-12 h-12 rounded-2xl items-center justify-center mb-3">
+                    <Ionicons name="megaphone" size={24} color="#059669" />
+                  </View>
+                  <Text className="font-black text-primary text-lg">
+                    Share with the class
+                  </Text>
+                  <Text className="text-slate-400 font-bold text-xs mt-1 opacity-70">
+                    Tap to create a new announcement
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <View className="mb-6 flex-row items-center">
+                <Text className="text-sm font-black text-slate-400 uppercase tracking-[3px]">
+                  Recent Updates
+                </Text>
+                <View className="flex-1 h-[1px] bg-slate-100 ml-4" />
+              </View>
             </View>
           )}
           renderItem={({ item }) => <AnnouncementCard item={item} />}

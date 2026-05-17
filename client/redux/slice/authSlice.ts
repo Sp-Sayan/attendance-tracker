@@ -64,7 +64,7 @@ export const loginUser = createAsyncThunk(
         text2: "Login successful! 👋",
       });
       await saveToken(response.data.jwt);
-      console.log("Login response", response.data);
+      //console.log("Login response", response.data);
       return response.data;
     } catch (error: any) {
       //toast error

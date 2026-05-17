@@ -52,15 +52,8 @@ export default function People() {
   return (
     <SafeAreaView edges={["bottom"]} className="flex-1 bg-background">
       <View className="flex-1 px-6">
-        {/* Class Info */}
-        <View className="mb-6 mt-4">
-          <Text className="text-3xl font-black text-foreground">
-            {className}
-          </Text>
-        </View>
-
         {/* Header Section with Class ID */}
-        <View className="bg-primary/5 rounded-[32px] p-6 mb-8 border border-primary/10">
+        <View className="bg-primary/5 rounded-[32px] p-6 my-8 border border-primary/10">
           <View className="flex-row justify-between items-center mb-4">
             <View>
               <Text className="text-sm font-bold text-primary opacity-60 uppercase tracking-widest">

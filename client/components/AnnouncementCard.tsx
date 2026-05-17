@@ -29,7 +29,7 @@ export default function AnnouncementCard({ item }: { item: Announcement }) {
         </TouchableOpacity>
       </View>
 
-      <View className="bg-slate-50/50 p-4 rounded-2xl border border-slate-50">
+      <View className="bg-slate-50/50 p-4 rounded-2xl">
         <Text className="text-slate-600 leading-6 font-medium text-[15px]">
           {item.message}
         </Text>

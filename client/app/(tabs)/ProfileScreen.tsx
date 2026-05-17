@@ -10,56 +10,19 @@ import { User } from "@/types/userType";
 export default function ProfileScreen() {
   const dispatch = useAppDispatch();
 
-  const isLoggedOut = useAppSelector(
-    (state) => state.auth.isLoggedOut,
-  );
+  const isLoggedOut = useAppSelector((state) => state.auth.isLoggedOut);
 
   const currentUser: User | null = useAppSelector(
     (state) => state.auth.authUser,
   );
+
+  const classes = useAppSelector((state) => state.classroom);
 
   /* ======================================================
      ROLE
   ====================================================== */
 
   const role = currentUser?.role || "TEACHER";
-
-  /* ======================================================
-     DEFAULT STUDENT VALUES
-  ====================================================== */
-
-  let dummyName = "std-test";
-  let profileType = "Student ID";
-  let designationText = "Year 3";
-
-  let stat2Label = "Attendance";
-  let stat2Value = "85%";
-
-  let stat3Label = "Hours";
-  let stat3Value = "142";
-
-  let stat4Label = "Streak";
-  let stat4Value = "15";
-
-  /* ======================================================
-     TEACHER VALUES
-  ====================================================== */
-
-  if (role === "TEACHER") {
-    dummyName = "test";
-    
-    profileType = "Teacher ID";
-    designationText = "Assistant Professor";
-
-    stat2Label = "Total Subjects";
-    stat2Value = "6";
-
-    stat3Label = "Total Students";
-    stat3Value = "248";
-
-    stat4Label = "Attendance Rate";
-    stat4Value = "92%";
-  }
 
   const handleLogout = async () => {
     await dispatch(logoutUser());
@@ -83,11 +46,7 @@ export default function ProfileScreen() {
             </Text>
 
             <TouchableOpacity className="bg-slate-50 p-3 rounded-2xl">
-              <Ionicons
-                name="settings-outline"
-                size={22}
-                color="#475569"
-              />
+              <Ionicons name="settings-outline" size={22} color="#475569" />
             </TouchableOpacity>
           </View>
 
@@ -111,23 +70,22 @@ export default function ProfileScreen() {
 
             <View className="items-center mt-6">
               <Text className="text-3xl font-black text-foreground">
-                {dummyName}
+                {currentUser?.name ||
+                  (role === "TEACHER" ? "test" : "std-test")}
               </Text>
 
               <View className="flex-row items-center mt-1 bg-slate-50 px-3 py-1 rounded-full">
-                <Ionicons
-                  name="business-outline"
-                  size={14}
-                  color="#64748b"
-                />
+                <Ionicons name="business-outline" size={14} color="#64748b" />
 
                 <Text className="text-slate-500 font-bold text-xs ml-2 uppercase tracking-tight">
-                  {currentUser?.department} • {designationText}
+                  {currentUser?.department}
+                  {role === "TEACHER" ? " • Assistant Professor" : ""}
                 </Text>
               </View>
 
               <Text className="text-slate-400 font-medium text-xs mt-2">
-                {profileType}: {currentUser?.institutionId}
+                {role === "TEACHER" ? "Teacher ID" : "Student ID"}:{" "}
+                {currentUser?.institutionId}
               </Text>
             </View>
           </View>
@@ -142,29 +100,29 @@ export default function ProfileScreen() {
             <StatCard
               icon="book"
               color="emerald"
-              value="12"
+              value={classes.classCount.toString()}
               label="Classes"
             />
 
             <StatCard
               icon="trending-up"
               color="blue"
-              value={stat2Value}
-              label={stat2Label}
+              value={role === "TEACHER" ? "6" : "85%"}
+              label={role === "TEACHER" ? "Total Subjects" : "Attendance"}
             />
 
             <StatCard
               icon="time"
               color="amber"
-              value={stat3Value}
-              label={stat3Label}
+              value={role === "TEACHER" ? "248" : "142"}
+              label={role === "TEACHER" ? "Total Students" : "Hours"}
             />
 
             <StatCard
               icon="flame"
               color="rose"
-              value={stat4Value}
-              label={stat4Label}
+              value={role === "TEACHER" ? "92%" : "15"}
+              label={role === "TEACHER" ? "Attendance Rate" : "Streak"}
             />
           </View>
         </View>
@@ -205,11 +163,7 @@ export default function ProfileScreen() {
           >
             <View className="flex-row items-center">
               <View className="bg-rose-500/10 p-2 rounded-xl">
-                <Ionicons
-                  name="log-out"
-                  size={20}
-                  color="#e11d48"
-                />
+                <Ionicons name="log-out" size={20} color="#e11d48" />
               </View>
 
               <Text className="ml-4 text-rose-600 font-black text-base">
@@ -278,20 +232,12 @@ function StatCard({
       <View
         className={`w-12 h-12 rounded-2xl ${style.tint} items-center justify-center mb-4`}
       >
-        <Ionicons
-          name={icon as any}
-          size={24}
-          color={style.icon}
-        />
+        <Ionicons name={icon as any} size={24} color={style.icon} />
       </View>
 
-      <Text className="text-2xl font-black text-foreground">
-        {value}
-      </Text>
+      <Text className="text-2xl font-black text-foreground">{value}</Text>
 
-      <Text className="text-slate-400 font-bold text-xs mt-1">
-        {label}
-      </Text>
+      <Text className="text-slate-400 font-bold text-xs mt-1">{label}</Text>
     </View>
   );
 }
@@ -317,23 +263,13 @@ function MenuButton({
     >
       <View className="flex-row items-center">
         <View className="bg-slate-50 p-2 rounded-xl">
-          <Ionicons
-            name={icon as any}
-            size={20}
-            color="#475569"
-          />
+          <Ionicons name={icon as any} size={20} color="#475569" />
         </View>
 
-        <Text className="ml-4 text-slate-700 font-bold text-base">
-          {label}
-        </Text>
+        <Text className="ml-4 text-slate-700 font-bold text-base">{label}</Text>
       </View>
 
-      <Ionicons
-        name="chevron-forward"
-        size={18}
-        color="#cbd5e1"
-      />
+      <Ionicons name="chevron-forward" size={18} color="#cbd5e1" />
     </TouchableOpacity>
   );
 }
