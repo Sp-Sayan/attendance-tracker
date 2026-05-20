@@ -12,6 +12,13 @@
       "supportsTablet": true
     },
     "android": {
+      "permissions": [
+    "android.permission.BLUETOOTH_SCAN",
+    "android.permission.BLUETOOTH_CONNECT",
+    "android.permission.ACCESS_FINE_LOCATION",
+    "android.permission.BLUETOOTH",
+    "android.permission.BLUETOOTH_ADMIN"
+  ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -40,7 +47,8 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -49,9 +57,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "4c9907e0-035e-4817-bcbc-8f4f393ce269"
+        "projectId": "cb06b1be-ce83-44d4-82f9-492c64cced3e"
       }
     },
-    "owner": "sayan-paul"
+    "owner": "sid_attendance023"
   }
 }
