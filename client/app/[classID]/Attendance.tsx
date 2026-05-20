@@ -19,6 +19,7 @@ import { User } from "@/types/userType";
 import { useGlobalSearchParams } from "expo-router";
 import { BleManager, State } from "react-native-ble-plx";
 import { AttendanceState } from "@/types/attendance";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 enum OTPState {
   PENDING = "PENDING",
@@ -47,6 +48,14 @@ const Attendance: React.FC = () => {
   // BLE State
   const [bleOTP, setBleOTP] = useState<OTPState | string>(OTPState.PENDING);
   const [biometricVerified, setBiometricVerified] = useState<boolean>(false);
+
+  // Report States
+  const [showReportModal, setShowReportModal] = useState<boolean>(false);
+  const [reportStartDate, setReportStartDate] = useState<Date | null>(null);
+  const [reportEndDate, setReportEndDate] = useState<Date | null>(null);
+  const [showStartPicker, setShowStartPicker] = useState<boolean>(false);
+  const [showEndPicker, setShowEndPicker] = useState<boolean>(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState<boolean>(false);
 
   // useRef ensures BleManager is created only ONCE, not on every re-render
   const managerRef = useRef<BleManager>(new BleManager());
@@ -252,6 +261,38 @@ const Attendance: React.FC = () => {
     }
   };
 
+
+
+
+    // ── NEW: Report helpers ──
+  const formatDate = (date: Date): string => {
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const isReportReady = reportStartDate !== null && reportEndDate !== null;
+
+  const handleGenerateReport = async () => {
+    if (!isReportReady) return;
+    setIsGeneratingReport(true);
+    // TODO: Call your report generation API here
+    setTimeout(() => {
+      setIsGeneratingReport(false);
+      setShowReportModal(false);
+      setReportStartDate(null);
+      setReportEndDate(null);
+      Alert.alert(
+        "Report Generated",
+        "The attendance report has been generated successfully.",
+      );
+    }, 2500);
+  };
+
+
+
   return (
     <SafeAreaView edges={["bottom"]} className="flex-1 bg-background">
       <ScrollView
@@ -399,6 +440,7 @@ const Attendance: React.FC = () => {
           {/* Action Button */}
           <View className="mt-12">
             {authUser?.role === "TEACHER" ? (
+              <>
               <TouchableOpacity
                 disabled={!selectedRoom}
                 onPress={() => {
@@ -428,6 +470,25 @@ const Attendance: React.FC = () => {
                   </Text>
                 </View>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                  onPress={() => setShowReportModal(true)}
+                  activeOpacity={0.9}
+                  className="mt-4 rounded-[32px] overflow-hidden shadow-2xl shadow-indigo-400/40"
+                >
+                  <View className="p-8 items-center flex-row justify-center bg-primary">
+                    <Ionicons
+                      name="document-text-outline"
+                      size={28}
+                      color="white"
+                    />
+                    <Text className="ml-4 text-xl font-black tracking-wide text-white">
+                      GENERATE REPORT
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </>
+
             ) : (
               <TouchableOpacity
                 disabled={!selectedRoom}
@@ -599,6 +660,168 @@ const Attendance: React.FC = () => {
                 </View>
               </View>
             )}
+          </View>
+        </View>
+      </Modal>
+
+
+      {/* ── NEW: Generate Report Modal ── */}
+      <Modal
+        transparent
+        visible={showReportModal}
+        animationType="slide"
+        onRequestClose={() => setShowReportModal(false)}
+      >
+        <View className="flex-1 justify-end bg-slate-900/80">
+          <View className="bg-white rounded-t-[48px] px-8 pt-10 pb-12">
+            {/* Handle bar */}
+            <View className="w-12 h-1.5 bg-slate-200 rounded-full self-center mb-8" />
+
+            {/* Title */}
+            <View className="flex-row items-center mb-2">
+              <View className="w-10 h-10 bg-indigo-100 rounded-2xl items-center justify-center mr-3">
+                <Ionicons
+                  name="document-text-outline"
+                  size={20}
+                  color="#059669"
+                />
+              </View>
+              <Text className="text-2xl font-black text-foreground">
+                Generate Report
+              </Text>
+            </View>
+            <Text className="text-slate-400 font-bold text-sm mb-8 ml-1">
+              Select a date range to export attendance data.
+            </Text>
+
+            {/* Start Date */}
+            <Text className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
+              Start Date
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                setShowEndPicker(false);
+                setShowStartPicker(true);
+              }}
+              activeOpacity={0.8}
+              className={`flex-row justify-between items-center bg-slate-50 rounded-2xl px-5 py-5 mb-1 border-2 ${reportStartDate ? "border-primary" : "border-slate-100"}`}
+            >
+              <View className="flex-row items-center">
+                <Ionicons
+                  name="calendar-outline"
+                  size={20}
+                  color={reportStartDate ? "#059669" : "#8eada4"}
+                />
+                <Text
+                  className={`ml-3 font-bold text-base ${reportStartDate ? "text-foreground" : "text-slate-400"}`}
+                >
+                  {reportStartDate
+                    ? formatDate(reportStartDate)
+                    : "Pick start date"}
+                </Text>
+              </View>
+              {reportStartDate && (
+                <Ionicons name="checkmark-circle" size={18} color="#059669" />
+              )}
+            </TouchableOpacity>
+
+            {showStartPicker && (
+              <DateTimePicker
+                value={reportStartDate ?? new Date()}
+                mode="date"
+                display={Platform.OS === "ios" ? "inline" : "default"}
+                maximumDate={reportEndDate ?? new Date()}
+                onChange={(_, date) => {
+                  setShowStartPicker(Platform.OS === "ios");
+                  if (date) setReportStartDate(date);
+                }}
+              />
+            )}
+
+            {/* End Date */}
+            <Text className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 mt-5">
+              End Date
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                setShowStartPicker(false);
+                setShowEndPicker(true);
+              }}
+              activeOpacity={0.8}
+              className={`flex-row justify-between items-center bg-slate-50 rounded-2xl px-5 py-5 mb-1 border-2 ${reportEndDate ? "border-primary" : "border-slate-100"}`}
+            >
+              <View className="flex-row items-center">
+                <Ionicons
+                  name="calendar-outline"
+                  size={20}
+                  color={reportEndDate ? "#059669" : "#8eada4"}
+                />
+                <Text
+                  className={`ml-3 font-bold text-base ${reportEndDate ? "text-foreground" : "text-slate-400"}`}
+                >
+                  {reportEndDate ? formatDate(reportEndDate) : "Pick end date"}
+                </Text>
+              </View>
+              {reportEndDate && (
+                <Ionicons name="checkmark-circle" size={18} color="#059669" />
+              )}
+            </TouchableOpacity>
+
+            {showEndPicker && (
+              <DateTimePicker
+                value={reportEndDate ?? new Date()}
+                mode="date"
+                display={Platform.OS === "ios" ? "inline" : "default"}
+                minimumDate={reportStartDate ?? undefined}
+                maximumDate={new Date()}
+                onChange={(_, date) => {
+                  setShowEndPicker(Platform.OS === "ios");
+                  if (date) setReportEndDate(date);
+                }}
+              />
+            )}
+
+            {/* Action Buttons */}
+            <View className="flex-row gap-4 mt-8">
+              <TouchableOpacity
+                onPress={() => {
+                  setShowReportModal(false);
+                  setReportStartDate(null);
+                  setReportEndDate(null);
+                  setShowStartPicker(false);
+                  setShowEndPicker(false);
+                }}
+                className="flex-1 bg-slate-100 py-5 rounded-2xl items-center border border-slate-200"
+              >
+                <Text className="text-slate-700 font-bold text-base">
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                disabled={!isReportReady || isGeneratingReport}
+                onPress={handleGenerateReport}
+                activeOpacity={0.9}
+                className={`flex-1 py-5 rounded-2xl items-center flex-row justify-center ${isReportReady && !isGeneratingReport ? "bg-primary" : "bg-slate-200"}`}
+              >
+                {isGeneratingReport ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="download-outline"
+                      size={18}
+                      color={isReportReady ? "white" : "#94a3b8"}
+                    />
+                    <Text
+                      className={`ml-2 font-black text-base ${isReportReady ? "text-white" : "text-slate-400"}`}
+                    >
+                      Generate
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
