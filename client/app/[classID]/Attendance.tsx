@@ -59,6 +59,7 @@ const Attendance: React.FC = () => {
 
   // useRef ensures BleManager is created only ONCE, not on every re-render
   const managerRef = useRef<BleManager>(new BleManager());
+  const isMountedRef = useRef<boolean>(true); // ADD THIS
 
   const authUser: User | null = useAppSelector((state) => state.auth.authUser);
   const attendance: AttendanceState | null = useAppSelector(
@@ -85,51 +86,81 @@ const Attendance: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const scanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Cleanup BLE manager on unmount only
-  useEffect(() => {
-    return () => {
-      managerRef.current.stopDeviceScan();
-      managerRef.current.destroy();
-    };
-  }, []);
+  // In your cleanup useEffect:
+useEffect(() => {
+  isMountedRef.current = true;
+  return () => {
+    isMountedRef.current = false;
+    if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
+    managerRef.current.stopDeviceScan();
+    managerRef.current.destroy();
+  };
+}, []);
 
   const requestPermissions = async (): Promise<boolean> => {
-    if (Platform.OS === "android") {
-      const results = await PermissionsAndroid.requestMultiple([
-        PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      ]);
+  if (Platform.OS !== "android") return true;
 
-      return (
-        results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] ===
-          PermissionsAndroid.RESULTS.GRANTED &&
-        results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] ===
-          PermissionsAndroid.RESULTS.GRANTED &&
-        results[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] ===
-          PermissionsAndroid.RESULTS.GRANTED
-      );
-    }
-    return true;
-  };
+  const apiLevel = Platform.Version as number;
+
+  // Android 12+ (API 31+) needs BLUETOOTH_SCAN & BLUETOOTH_CONNECT
+  // Older Android only needs FINE_LOCATION
+  const permissionsToRequest =
+    apiLevel >= 31
+      ? [
+          PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        ]
+      : [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION];
+
+  // Check which ones are already granted
+  const statuses = await Promise.all(
+    permissionsToRequest.map((p) => PermissionsAndroid.check(p))
+  );
+
+  const allGranted = statuses.every(Boolean);
+  if (allGranted) return true;
+
+  // Request only the ones not yet granted
+  const toRequest = permissionsToRequest.filter((_, i) => !statuses[i]);
+  const results = await PermissionsAndroid.requestMultiple(toRequest);
+
+  const allApproved = toRequest.every(
+    (p) => results[p] === PermissionsAndroid.RESULTS.GRANTED
+  );
+
+  if (!allApproved) {
+    // Check if any are permanently denied
+    const permanentlyDenied = toRequest.some(
+      (p) => results[p] === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN
+    );
+
+    Alert.alert(
+      "Permission Required",
+      permanentlyDenied
+        ? "Bluetooth permissions were permanently denied. Please enable Nearby devices & Location in app settings manually."
+        : "Bluetooth and Location permissions are required to scan for terminal beacons.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Open Settings", onPress: () => Linking.openSettings() },
+      ]
+    );
+    return false;
+  }
+
+  return true;
+};
 
   const scanForOTP = async () => {
+    if (!isMountedRef.current) return; // ADD THIS
     console.log("Scanning for OTP");
     try {
       const hasPermissions = await requestPermissions();
       if (!hasPermissions) {
         setBleOTP(OTPState.FAILED);
-        Alert.alert(
-          "Permission Required",
-          "Bluetooth and Location permissions are required to scan for terminal beacons and log your attendance. Please enable them in your system settings.",
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Open Settings",
-              onPress: () => Linking.openSettings(),
-            },
-          ],
-        );
         return;
       }
 
@@ -148,6 +179,7 @@ const Attendance: React.FC = () => {
       setBleOTP(OTPState.SCANNING);
 
       managerRef.current.startDeviceScan(null, null, (error, device) => {
+        if (!isMountedRef.current) return; // ADD THIS
         console.log(device);
         if (error) {
           console.log("BLE Error:", error);
@@ -163,12 +195,13 @@ const Attendance: React.FC = () => {
         }
       });
 
-      setTimeout(() => {
-        managerRef.current.stopDeviceScan();
-        setBleOTP((prev) =>
-          prev === OTPState.SCANNING ? OTPState.NOT_FOUND : prev,
-        );
-      }, 15000);
+      scanTimeoutRef.current = setTimeout(() => {
+  if (!isMountedRef.current) return; // ADD THIS
+  managerRef.current.stopDeviceScan();
+  setBleOTP((prev) =>
+    prev === OTPState.SCANNING ? OTPState.NOT_FOUND : prev,
+  );
+}, 15000);
     } catch (e) {
       console.log("BLE scan error (manager may have been destroyed):", e);
       setBleOTP(OTPState.FAILED);
@@ -177,7 +210,7 @@ const Attendance: React.FC = () => {
 
   const handleBiometric = async () => {
     if (!selectedRoom) return;
-
+    if (!isMountedRef.current) return; // ADD THIS
     // Check Bluetooth state first before prompting for biometric
     const bluetoothState = await managerRef.current.state();
     if (bluetoothState !== State.PoweredOn) {
