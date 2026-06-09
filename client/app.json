@@ -13,12 +13,12 @@
     },
     "android": {
       "permissions": [
-    "android.permission.BLUETOOTH_SCAN",
-    "android.permission.BLUETOOTH_CONNECT",
-    "android.permission.ACCESS_FINE_LOCATION",
-    "android.permission.BLUETOOTH",
-    "android.permission.BLUETOOTH_ADMIN"
-  ],
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -57,9 +57,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "cb06b1be-ce83-44d4-82f9-492c64cced3e"
+        "projectId": "c2dccdd4-7de5-4737-9ca8-6d668c265c10"
       }
     },
-    "owner": "sid_attendance023"
+    "owner": "soumadeep19"
   }
 }
