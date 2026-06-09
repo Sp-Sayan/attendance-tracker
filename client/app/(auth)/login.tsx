@@ -6,10 +6,10 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Image,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks/hooks";
@@ -43,29 +43,24 @@ const Login = () => {
           showsVerticalScrollIndicator={false}
         >
           {/* Header Section */}
-          <View className="items-center mt-12 mb-12">
-            <View className="relative">
-              <View className="p-1 rounded-full bg-primary/10 shadow-sm">
-                <Image
-                  source={require("../../assets/images/donald.png")}
-                  className="w-32 h-32 rounded-full border-2 border-white shadow-lg"
-                  resizeMode="cover"
-                />
-              </View>
-              <View className="absolute bottom-0 right-0 bg-primary p-2 rounded-full border-2 border-white shadow-md">
-                <Ionicons name="person" size={16} color="white" />
-              </View>
-            </View>
+          {/* Header Section */}
+<View className="items-center mt-12 mb-12">
+  <View className="w-32 h-32 rounded-full bg-primary/10 items-center justify-center shadow-sm">
+    <Ionicons
+      name="school-outline"
+      size={60}
+      color="#059669"
+    />
+  </View>
 
-            <Text className="mt-6 text-2xl font-bold text-foreground tracking-tight">
-              Donald Trump
-            </Text>
-            <View className="bg-primary/10 px-3 py-1 rounded-full mt-2">
-              <Text className="text-primary text-xs font-semibold uppercase tracking-wider">
-                Student Portal
-              </Text>
-            </View>
-          </View>
+  <Text className="mt-6 text-3xl font-black text-foreground tracking-tight">
+    Attendance Tracker
+  </Text>
+
+  <Text className="text-mutedForeground mt-2 text-sm font-medium opacity-70">
+    Smart Attendance Management System
+  </Text>
+</View>
 
           {/* Welcome Text */}
           <View className="mb-10">

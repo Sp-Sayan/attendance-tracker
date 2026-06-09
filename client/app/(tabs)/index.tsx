@@ -68,13 +68,8 @@ const Index = () => {
               </View>
             )}
           </View>
-
-          <TouchableOpacity className="bg-white p-4 rounded-[28px] shadow-sm border border-border/50">
-            <Ionicons name="notifications-outline" size={26} color="#0f172a" />
-
-            <View className="absolute top-4 right-4 w-3 h-3 bg-destructive rounded-full border-2 border-white" />
-          </TouchableOpacity>
-        </View>
+          </View>
+          
 
         {/* ======================================================
             HERO CARD
@@ -94,25 +89,31 @@ const Index = () => {
           <View className="flex-row justify-between items-start">
             <View>
               <Text className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-4">
-                {role === "TEACHER"
-                  ? "Teaching Overview"
-                  : "Overall Attendance"}
+              {role === "TEACHER" ? "Teaching Overview" : "Attendance Reminder"}
               </Text>
 
               <View className="flex-row items-end">
-                <Text className="text-7xl font-black text-white">
-                  {role === "TEACHER" ? classCount : "85"}
-                </Text>
+               {role === "TEACHER" ? (
+  <>
+    <Text className="text-7xl font-black text-white">
+      {classCount}
+    </Text>
 
-                <Text className="text-2xl font-bold text-white ml-3 mb-2">
-                  {role === "TEACHER" ? "Active Classes" : "%"}
-                </Text>
+    <Text className="text-2xl font-bold text-white ml-3 mb-2">
+      Active Classes
+    </Text>
+  </>
+) : (
+  <Text className="text-white text-2xl font-black leading-9 max-w-[280px]">
+    Classes may be optional in your heart, but 75% isn't ;)
+  </Text>
+)}
               </View>
 
               {role === "TEACHER" && (
-                <Text className="text-slate-400 mt-2 font-semibold">
-                  Across all sections
-                </Text>
+                <Text className="text-slate-400 mt-2 font-semibold text-center">
+  Students brought excuses, so we brought automation. Let that register retire!
+</Text>
               )}
             </View>
           </View>
@@ -135,29 +136,17 @@ const Index = () => {
                 </Text>
               </View>
             </View>
-          ) : (
-            <View className="flex-row justify-between">
-              <View>
-                <Text className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">
-                  {role === "TEACHER" ? "Total Students" : "Total Classes"}
-                </Text>
-                {/* TODO: Update the text */}
-                <Text className="text-xl font-bold text-white">
-                  {role === "TEACHER" ? "248" : classCount}
-                </Text>
-              </View>
+       ) : (
+  <View>
+    <Text className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">
+      Total Classes
+    </Text>
 
-              <View>
-                <Text className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">
-                  Status
-                </Text>
-
-                <Text className="text-xl font-bold text-emerald-400">
-                  Exemplary
-                </Text>
-              </View>
-            </View>
-          )}
+    <Text className="text-xl font-bold text-white">
+      {classCount}
+    </Text>
+  </View>
+)}
 
           {/* TEACHER BADGE */}
 
@@ -180,18 +169,13 @@ const Index = () => {
 
         <View className="flex-row justify-between items-center mb-6">
           <View>
-            <Text className="text-2xl font-black text-foreground">
-              {role === "TEACHER" ? "Today's Schedule" : "Upcoming"}
-            </Text>
+           <Text className="text-2xl font-black text-foreground">
+  Upcoming
+</Text>
 
             <View className="h-1 w-10 bg-primary rounded-full mt-1" />
           </View>
 
-          <TouchableOpacity>
-            <Text className="text-primary font-bold text-lg">
-              {role === "TEACHER" ? "View All" : "View Schedule"}
-            </Text>
-          </TouchableOpacity>
         </View>
 
         {/* ======================================================
@@ -229,17 +213,9 @@ const Index = () => {
           </Text>
 
           <View className="flex-row mt-8">
+          
+
             <View className="flex-row items-center bg-slate-50 px-4 py-3 rounded-2xl">
-              <Ionicons name="time-outline" size={18} color="#64748b" />
-
-              <Text className="text-slate-600 font-bold text-sm ml-2">
-                {role === "TEACHER"
-                  ? "03:00 PM - 04:30 PM"
-                  : "10:00 - 11:30 AM"}
-              </Text>
-            </View>
-
-            <View className="flex-row items-center bg-slate-50 px-4 py-3 rounded-2xl ml-3">
               <Ionicons name="people-outline" size={18} color="#64748b" />
 
               <Text className="text-slate-600 font-bold text-sm ml-2">

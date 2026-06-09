@@ -22,7 +22,7 @@ export default function ProfileScreen() {
      ROLE
   ====================================================== */
 
-  const role = currentUser?.role || "TEACHER";
+  const role = currentUser?.role || "STUDENT";
 
   const handleLogout = async () => {
     await dispatch(logoutUser());
@@ -104,26 +104,37 @@ export default function ProfileScreen() {
               label="Classes"
             />
 
-            <StatCard
-              icon="trending-up"
-              color="blue"
-              value={role === "TEACHER" ? "6" : "85%"}
-              label={role === "TEACHER" ? "Total Subjects" : "Attendance"}
-            />
+           {role === "TEACHER" ? (
+  <>
+    <StatCard
+      icon="trending-up"
+      color="blue"
+      value="6"
+      label="Total Subjects"
+    />
 
-            <StatCard
-              icon="time"
-              color="amber"
-              value={role === "TEACHER" ? "248" : "142"}
-              label={role === "TEACHER" ? "Total Students" : "Hours"}
-            />
+    <StatCard
+      icon="time"
+      color="amber"
+      value="248"
+      label="Total Students"
+    />
 
-            <StatCard
-              icon="flame"
-              color="rose"
-              value={role === "TEACHER" ? "92%" : "15"}
-              label={role === "TEACHER" ? "Attendance Rate" : "Streak"}
-            />
+    <StatCard
+      icon="flame"
+      color="rose"
+      value="92 Days"
+      label="Teaching Streak"
+    />
+  </>
+) : (
+  <StatCard
+    icon="flame"
+    color="rose"
+    value="15"
+    label="Streak"
+  />
+)}
           </View>
         </View>
 
@@ -148,11 +159,7 @@ export default function ProfileScreen() {
             onPress={() => {}}
           />
 
-          <MenuButton
-            icon="notifications-outline"
-            label="Notification Settings"
-            onPress={() => {}}
-          />
+         
 
           <View className="h-[1px] bg-slate-100 my-6 mx-2" />
 
