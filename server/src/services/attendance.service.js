@@ -30,7 +30,7 @@ export const createAttendanceSessionService = async ({
 };
 
 /* ======================================================
-   FIND ACTIVE SESSION USING OTP + ROOM
+   FIND ACTIVE SESSION USING OTP + ROOM + CLASSID
 ====================================================== */
 
 export const findAttendanceSessionService =
@@ -48,6 +48,9 @@ export const findAttendanceSessionService =
                     roomNumber,
                     status: "ACTIVE",
                 },
+                orderBy: {
+                    date: "desc"
+                }
             });
         return session;
     };
@@ -167,22 +170,19 @@ export const endAttendanceSessionService =
 //    TEACHER DASHBOARD
 // ====================================================== */
 
-// export const fetchAttendanceSessionsService =
-//     async (teacherId) => {
+export const fetchActiveAttendanceSessionService =
+    async (teacherId) => {
 
-//         const sessions =
-//             await prisma.attendanceSession.findMany({
-//                 where: {
-//                     teacherId,
-//                 },
+        const session =
+            await prisma.attendanceSession.findFirst({
+                where: {
+                    teacherId,
+                    status: "ACTIVE",
+                },
+            });
 
-//                 orderBy: {
-//                     createdAt: "desc",
-//                 },
-//             });
-
-//         return sessions;
-//     };
+        return session;
+    };
 
 // /* ======================================================
 //    FETCH STUDENT ATTENDANCE

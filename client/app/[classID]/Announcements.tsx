@@ -39,7 +39,7 @@ export default function Announcements() {
       id: 2,
       senderName: "Prof. Moumita Sengupta",
       senderProfession: "Lecturer",
-      senderProfilePic: require("@/assets/images/donald.png"),
+      senderProfilePic: require("@/assets/images/profile_pic.png"),
       message:
         "The lecture for 'Digital Communication' today will be moved to the virtual auditorium. Please use the link provided in the course syllabus.",
       timestamp: "09:15 AM",

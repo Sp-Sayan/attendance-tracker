@@ -4,6 +4,7 @@ import {
     createAttendanceSession,
     markAttendance,
     endAttendanceSession,
+    fetchActiveAttendanceSession,
 } from "../controllers/attendance.controller.js";
 
 import {
@@ -39,6 +40,13 @@ router.patch(
     userIsTeacher,
     //TODO - Add isSameTeacherAsCreator middleware
     endAttendanceSession,
+);
+
+router.get(
+    "/active-session",
+    protectRoute,
+    userIsTeacher,
+    fetchActiveAttendanceSession,
 );
 
 

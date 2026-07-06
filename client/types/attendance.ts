@@ -10,9 +10,6 @@ export interface AttendanceSession {
 }
 
 export interface AttendanceState {
-  activeSession: AttendanceSession | null;
-  isCreatingSession: boolean;
   isMarking: boolean;
-  isEnding: boolean;
   error: string | null;
 }

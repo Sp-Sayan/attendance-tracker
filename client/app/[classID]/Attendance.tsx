@@ -14,12 +14,18 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as LocalAuthentication from "expo-local-authentication";
 import { Ionicons } from "@expo/vector-icons";
-import { useAppSelector } from "@/redux/hooks/hooks";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks/hooks";
 import { User } from "@/types/userType";
 import { useGlobalSearchParams } from "expo-router";
 import { BleManager, State } from "react-native-ble-plx";
 import { AttendanceState } from "@/types/attendance";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import {
+  AttendanceSessionState,
+  createSession,
+  endSession,
+} from "@/redux/slice/attendanceSessionSlice";
+import { markAttendance } from "@/redux/slice/attendanceSlice";
 
 enum OTPState {
   PENDING = "PENDING",
@@ -29,6 +35,14 @@ enum OTPState {
 }
 
 const rooms: string[] = ["Room 101", "Room 102", "Room 103", "Room 104"];
+
+let bleManagerInstance: BleManager | null = null;
+const getBleManager = (): BleManager => {
+  if (!bleManagerInstance) {
+    bleManagerInstance = new BleManager();
+  }
+  return bleManagerInstance;
+};
 
 const Attendance: React.FC = () => {
   const { classID, className } = useGlobalSearchParams<{
@@ -58,13 +72,23 @@ const Attendance: React.FC = () => {
   const [isGeneratingReport, setIsGeneratingReport] = useState<boolean>(false);
 
   // useRef ensures BleManager is created only ONCE, not on every re-render
-  const managerRef = useRef<BleManager>(new BleManager());
+  const managerRef = useRef<BleManager>(getBleManager());
   const isMountedRef = useRef<boolean>(true); // ADD THIS
 
+  // Redux states and utils
   const authUser: User | null = useAppSelector((state) => state.auth.authUser);
   const attendance: AttendanceState | null = useAppSelector(
     (state) => state.attendance,
   );
+  const session: AttendanceSessionState | null = useAppSelector(
+    (state) => state.attendanceSession,
+  );
+  const dispatch = useAppDispatch();
+
+  // True when a session for a DIFFERENT class is currently active
+  const isBlockedByOtherSession =
+    !!session?.activeSession && session.activeSession.classId !== classID;
+
   // const [isMarkingAttendance, setIsMarkingAttendance] =
   //   useState<boolean>(false);
 
@@ -90,69 +114,76 @@ const Attendance: React.FC = () => {
 
   // Cleanup BLE manager on unmount only
   // In your cleanup useEffect:
-useEffect(() => {
-  isMountedRef.current = true;
-  return () => {
-    isMountedRef.current = false;
-    if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
-    managerRef.current.stopDeviceScan();
-    managerRef.current.destroy();
-  };
-}, []);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
+      managerRef.current.stopDeviceScan();
+    };
+  }, []);
+
+  //fetch whether an active session exists for this class
+  useEffect(() => {
+    if (session.activeSession?.classId === classID) {
+      setIsAttendanceEnabled(true);
+      setSelectedRoom(session.activeSession?.roomNumber);
+    }
+  }, []);
 
   const requestPermissions = async (): Promise<boolean> => {
-  if (Platform.OS !== "android") return true;
+    if (Platform.OS !== "android") return true;
 
-  const apiLevel = Platform.Version as number;
+    const apiLevel = Platform.Version as number;
 
-  // Android 12+ (API 31+) needs BLUETOOTH_SCAN & BLUETOOTH_CONNECT
-  // Older Android only needs FINE_LOCATION
-  const permissionsToRequest =
-    apiLevel >= 31
-      ? [
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        ]
-      : [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION];
+    // Android 12+ (API 31+) needs BLUETOOTH_SCAN & BLUETOOTH_CONNECT
+    // Older Android only needs FINE_LOCATION
+    const permissionsToRequest =
+      apiLevel >= 31
+        ? [
+            PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+            PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          ]
+        : [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION];
 
-  // Check which ones are already granted
-  const statuses = await Promise.all(
-    permissionsToRequest.map((p) => PermissionsAndroid.check(p))
-  );
-
-  const allGranted = statuses.every(Boolean);
-  if (allGranted) return true;
-
-  // Request only the ones not yet granted
-  const toRequest = permissionsToRequest.filter((_, i) => !statuses[i]);
-  const results = await PermissionsAndroid.requestMultiple(toRequest);
-
-  const allApproved = toRequest.every(
-    (p) => results[p] === PermissionsAndroid.RESULTS.GRANTED
-  );
-
-  if (!allApproved) {
-    // Check if any are permanently denied
-    const permanentlyDenied = toRequest.some(
-      (p) => results[p] === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN
+    // Check which ones are already granted
+    const statuses = await Promise.all(
+      permissionsToRequest.map((p) => PermissionsAndroid.check(p)),
     );
 
-    Alert.alert(
-      "Permission Required",
-      permanentlyDenied
-        ? "Bluetooth permissions were permanently denied. Please enable Nearby devices & Location in app settings manually."
-        : "Bluetooth and Location permissions are required to scan for terminal beacons.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Open Settings", onPress: () => Linking.openSettings() },
-      ]
-    );
-    return false;
-  }
+    const allGranted = statuses.every(Boolean);
+    if (allGranted) return true;
 
-  return true;
-};
+    // Request only the ones not yet granted
+    const toRequest = permissionsToRequest.filter((_, i) => !statuses[i]);
+    const results = await PermissionsAndroid.requestMultiple(toRequest);
+
+    const allApproved = toRequest.every(
+      (p) => results[p] === PermissionsAndroid.RESULTS.GRANTED,
+    );
+
+    if (!allApproved) {
+      // Check if any are permanently denied
+      const permanentlyDenied = toRequest.some(
+        (p) => results[p] === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN,
+      );
+
+      Alert.alert(
+        "Permission Required",
+        permanentlyDenied
+          ? "Bluetooth permissions were permanently denied. Please enable Nearby devices & Location in app settings manually."
+          : "Bluetooth and Location permissions are required to scan for terminal beacons.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Open Settings", onPress: () => Linking.openSettings() },
+        ],
+      );
+      return false;
+    }
+
+    return true;
+  };
 
   const scanForOTP = async () => {
     if (!isMountedRef.current) return; // ADD THIS
@@ -178,30 +209,38 @@ useEffect(() => {
 
       setBleOTP(OTPState.SCANNING);
 
-      managerRef.current.startDeviceScan(null, null, (error, device) => {
-        if (!isMountedRef.current) return; // ADD THIS
-        console.log(device);
-        if (error) {
-          console.log("BLE Error:", error);
-          setBleOTP(OTPState.FAILED);
-          return;
-        }
-        if (device?.name?.startsWith("OTP-")) {
-          const otp = device.name.replace("OTP-", "");
-          setBleOTP(otp);
-          managerRef.current.stopDeviceScan();
+      managerRef.current.startDeviceScan(
+        null,
+        {
+          allowDuplicates: true,
+        },
+        (error, device) => {
+          if (!isMountedRef.current) return; // ADD THIS
+          console.log(device);
+          if (error) {
+            console.log("BLE Error:", error);
+            setBleOTP(OTPState.FAILED);
+            return;
+          }
+          // Prefer localName (live advertisement packet) over name (OS-cached)
+          const advertisedName = device?.localName ?? device?.name;
+          if (advertisedName?.startsWith("OTP-")) {
+            const otp = advertisedName.replace("OTP-", "");
+            setBleOTP(otp);
+            managerRef.current.stopDeviceScan();
 
-          handleAPIFunctionCalls();
-        }
-      });
+            handleAPIFunctionCalls(otp);
+          }
+        },
+      );
 
       scanTimeoutRef.current = setTimeout(() => {
-  if (!isMountedRef.current) return; // ADD THIS
-  managerRef.current.stopDeviceScan();
-  setBleOTP((prev) =>
-    prev === OTPState.SCANNING ? OTPState.NOT_FOUND : prev,
-  );
-}, 15000);
+        if (!isMountedRef.current) return; // ADD THIS
+        managerRef.current.stopDeviceScan();
+        setBleOTP((prev) =>
+          prev === OTPState.SCANNING ? OTPState.NOT_FOUND : prev,
+        );
+      }, 15000);
     } catch (e) {
       console.log("BLE scan error (manager may have been destroyed):", e);
       setBleOTP(OTPState.FAILED);
@@ -261,43 +300,70 @@ useEffect(() => {
     }
   };
 
-  const handleMarkAttendance = async () => {
-    setBiometricVerified(false);
-    setAttendanceMarked(true);
+  const handleMarkAttendance = async (scannedOtp: string) => {
+    const data: { classId: string; otp: string; roomNumber: string } = {
+      classId: classID,
+      otp: scannedOtp,
+      roomNumber: selectedRoom as string,
+    };
+    const result = await dispatch(markAttendance(data));
+    // Use the action's own fulfilled/rejected status — not stale selector state
+    if (markAttendance.fulfilled.match(result)) {
+      setBiometricVerified(false);
+      setAttendanceMarked(true);
+    } else {
+      // On failure, dismiss the BLE modal so the user isn't stuck
+      setBiometricVerified(false);
+      setBleOTP(OTPState.FAILED);
+    }
   };
 
-  const handleCreateSession = async () => {
+  const handleCreateSession = async (scannedOtp: string) => {
     if (!selectedRoom) return;
     console.log("create session");
-    setTimeout(() => {
+    const data = {
+      classId: classID,
+      otp: scannedOtp,
+      roomNumber: selectedRoom,
+    };
+    const result = await dispatch(createSession(data));
+    // Use the action's own fulfilled/rejected status — not stale selector state
+    if (createSession.fulfilled.match(result)) {
+      setIsAttendanceEnabled(true);
       setSessionCreatedSuccess(true);
-    }, 4000);
-    setIsAttendanceEnabled(!isAttendanceEnabled);
+    } else {
+      // On failure, dismiss the BLE modal so the user isn't stuck
+      setBiometricVerified(false);
+      setBleOTP(OTPState.PENDING);
+    }
   };
 
   const handleEndSession = async () => {
     if (!selectedRoom) return;
-    console.log("end session");
-    setIsAttendanceEnabled(!isAttendanceEnabled);
+    const result = await dispatch(
+      endSession(session.activeSession?.sessionId as string),
+    );
+    // Use the action's own fulfilled/rejected status — not stale selector state
+    if (endSession.fulfilled.match(result)) {
+      setIsAttendanceEnabled(false);
+      setSessionCreatedSuccess(false);
+    }
   };
 
-  const handleAPIFunctionCalls = async () => {
+  const handleAPIFunctionCalls = async (scannedOtp: string) => {
     //call API functions
     if (authUser?.role === "STUDENT") {
       //call attendance api here
       setTimeout(() => {
-        handleMarkAttendance();
+        handleMarkAttendance(scannedOtp);
       }, 2500);
     } else if (authUser?.role === "TEACHER") {
       //call create session api here
-      handleCreateSession();
+      handleCreateSession(scannedOtp);
     }
   };
 
-
-
-
-    // ── NEW: Report helpers ──
+  // ── NEW: Report helpers ──
   const formatDate = (date: Date): string => {
     return date.toLocaleDateString("en-IN", {
       day: "2-digit",
@@ -323,8 +389,6 @@ useEffect(() => {
       );
     }, 2500);
   };
-
-
 
   return (
     <SafeAreaView edges={["bottom"]} className="flex-1 bg-background">
@@ -414,23 +478,52 @@ useEffect(() => {
               : "Terminal Selection"}
           </Text>
 
+          {/* Cross-class active session warning */}
+          {session?.activeSession &&
+            session.activeSession.classId !== classID && (
+              <View className="flex-row items-start bg-amber-50 border border-amber-300 rounded-2xl px-4 py-3 mb-4 gap-3">
+                <Ionicons
+                  name="warning"
+                  size={20}
+                  color="#d97706"
+                  style={{ marginTop: 1 }}
+                />
+                <View className="flex-1">
+                  <Text className="text-amber-800 font-bold text-sm">
+                    Another Session is Active
+                  </Text>
+                  <Text className="text-amber-700 text-xs mt-0.5 leading-4">
+                    You have an active attendance session running in a different
+                    class. End that session before enabling one here.
+                  </Text>
+                </View>
+              </View>
+            )}
+
           <TouchableOpacity
-            onPress={() => setShowDropdown(!showDropdown)}
-            activeOpacity={0.8}
-            className={`flex-row justify-between items-center bg-white rounded-[24px] px-6 py-6 border-2 transition-all shadow-sm ${selectedRoom ? "border-primary" : "border-slate-100"}`}
+            onPress={() => !isBlockedByOtherSession && setShowDropdown(!showDropdown)}
+            activeOpacity={isBlockedByOtherSession ? 1 : 0.8}
+            disabled={isBlockedByOtherSession}
+            className={`flex-row justify-between items-center rounded-[24px] px-6 py-6 border-2 transition-all shadow-sm ${
+              isBlockedByOtherSession
+                ? "bg-slate-100 border-slate-200 opacity-50"
+                : selectedRoom
+                ? "bg-white border-primary"
+                : "bg-white border-slate-100"
+            }`}
           >
             <View className="flex-row items-center">
               <View
-                className={`p-2 rounded-xl mr-4 ${selectedRoom ? "bg-primary/10" : "bg-slate-50"}`}
+                className={`p-2 rounded-xl mr-4 ${selectedRoom && !isBlockedByOtherSession ? "bg-primary/10" : "bg-slate-50"}`}
               >
                 <Ionicons
                   name="location"
                   size={20}
-                  color={selectedRoom ? "#059669" : "#94a3b8"}
+                  color={selectedRoom && !isBlockedByOtherSession ? "#059669" : "#94a3b8"}
                 />
               </View>
               <Text
-                className={`text-lg font-bold ${selectedRoom ? "text-foreground" : "text-slate-400"}`}
+                className={`text-lg font-bold ${selectedRoom && !isBlockedByOtherSession ? "text-foreground" : "text-slate-400"}`}
               >
                 {selectedRoom || "Choose your room"}
               </Text>
@@ -474,37 +567,57 @@ useEffect(() => {
           <View className="mt-12">
             {authUser?.role === "TEACHER" ? (
               <>
-              <TouchableOpacity
-                disabled={!selectedRoom}
-                onPress={() => {
-                  if (!isAttendanceEnabled) {
-                    handleBiometric();
-                  } else {
-                    handleEndSession();
-                  }
-                }}
-                activeOpacity={0.9}
-                className={`rounded-[32px] overflow-hidden shadow-2xl ${selectedRoom ? (isAttendanceEnabled ? "shadow-amber-400/40" : "shadow-primary/40") : ""}`}
-              >
-                <View
-                  className={`p-8 items-center flex-row justify-center ${selectedRoom ? (isAttendanceEnabled ? "bg-amber-500" : "bg-primary") : "bg-slate-200"}`}
+                <TouchableOpacity
+                  disabled={!selectedRoom || isBlockedByOtherSession}
+                  onPress={() => {
+                    if (!isAttendanceEnabled) {
+                      handleBiometric();
+                    } else {
+                      handleEndSession();
+                    }
+                  }}
+                  activeOpacity={0.9}
+                  className={`rounded-[32px] overflow-hidden shadow-2xl ${
+                    isBlockedByOtherSession
+                      ? "opacity-40"
+                      : selectedRoom
+                      ? isAttendanceEnabled
+                        ? "shadow-amber-400/40"
+                        : "shadow-primary/40"
+                      : ""
+                  }`}
                 >
-                  <Ionicons
-                    name={isAttendanceEnabled ? "stop-circle" : "play-circle"}
-                    size={28}
-                    color={selectedRoom ? "white" : "#94a3b8"}
-                  />
-                  <Text
-                    className={`ml-4 text-xl font-black tracking-wide ${selectedRoom ? "text-white" : "text-slate-400"}`}
+                  <View
+                    className={`p-8 items-center flex-row justify-center ${
+                      isBlockedByOtherSession
+                        ? "bg-slate-300"
+                        : selectedRoom
+                        ? isAttendanceEnabled
+                          ? "bg-amber-500"
+                          : "bg-primary"
+                        : "bg-slate-200"
+                    }`}
                   >
-                    {isAttendanceEnabled
-                      ? "DISABLE ATTENDANCE"
-                      : "ENABLE ATTENDANCE"}
-                  </Text>
-                </View>
-              </TouchableOpacity>
+                    <Ionicons
+                      name={isAttendanceEnabled ? "stop-circle" : "play-circle"}
+                      size={28}
+                      color={selectedRoom && !isBlockedByOtherSession ? "white" : "#94a3b8"}
+                    />
+                    <Text
+                      className={`ml-4 text-xl font-black tracking-wide ${
+                        selectedRoom && !isBlockedByOtherSession
+                          ? "text-white"
+                          : "text-slate-400"
+                      }`}
+                    >
+                      {isAttendanceEnabled
+                        ? "DISABLE ATTENDANCE"
+                        : "ENABLE ATTENDANCE"}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
 
-              <TouchableOpacity
+                <TouchableOpacity
                   onPress={() => setShowReportModal(true)}
                   activeOpacity={0.9}
                   className="mt-4 rounded-[32px] overflow-hidden shadow-2xl shadow-indigo-400/40"
@@ -521,7 +634,6 @@ useEffect(() => {
                   </View>
                 </TouchableOpacity>
               </>
-
             ) : (
               <TouchableOpacity
                 disabled={!selectedRoom}
@@ -696,7 +808,6 @@ useEffect(() => {
           </View>
         </View>
       </Modal>
-
 
       {/* ── NEW: Generate Report Modal ── */}
       <Modal

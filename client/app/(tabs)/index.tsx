@@ -12,6 +12,7 @@ import { fetchClassrooms } from "@/redux/slice/classroomSlice";
 import { Ionicons } from "@expo/vector-icons";
 
 import { User } from "@/types/userType";
+import { fetchActiveSession } from "@/redux/slice/attendanceSessionSlice";
 
 const Index = () => {
   const currentUser: User | null = useAppSelector(
@@ -26,8 +27,13 @@ const Index = () => {
     await dispatch(fetchClassrooms());
   };
 
+  const handleActiveSessionFetch = async () => {
+    await dispatch(fetchActiveSession());
+  };
+
   useEffect(() => {
     handleClassFetch();
+    handleActiveSessionFetch();
   }, []);
 
   /* ======================================================
@@ -68,8 +74,7 @@ const Index = () => {
               </View>
             )}
           </View>
-          </View>
-          
+        </View>
 
         {/* ======================================================
             HERO CARD
@@ -89,31 +94,34 @@ const Index = () => {
           <View className="flex-row justify-between items-start">
             <View>
               <Text className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-4">
-              {role === "TEACHER" ? "Teaching Overview" : "Attendance Reminder"}
+                {role === "TEACHER"
+                  ? "Teaching Overview"
+                  : "Attendance Reminder"}
               </Text>
 
               <View className="flex-row items-end">
-               {role === "TEACHER" ? (
-  <>
-    <Text className="text-7xl font-black text-white">
-      {classCount}
-    </Text>
+                {role === "TEACHER" ? (
+                  <>
+                    <Text className="text-7xl font-black text-white">
+                      {classCount}
+                    </Text>
 
-    <Text className="text-2xl font-bold text-white ml-3 mb-2">
-      Active Classes
-    </Text>
-  </>
-) : (
-  <Text className="text-white text-2xl font-black leading-9 max-w-[280px]">
-    Classes may be optional in your heart, but 75% isn't ;)
-  </Text>
-)}
+                    <Text className="text-2xl font-bold text-white ml-3 mb-2">
+                      Active Classes
+                    </Text>
+                  </>
+                ) : (
+                  <Text className="text-white text-2xl font-black leading-9 max-w-[280px]">
+                    Classes may be optional in your heart, but 75% isn't ;)
+                  </Text>
+                )}
               </View>
 
               {role === "TEACHER" && (
                 <Text className="text-slate-400 mt-2 font-semibold text-center">
-  Students brought excuses, so we brought automation. Let that register retire!
-</Text>
+                  Students brought excuses, so we brought automation. Let that
+                  register retire!
+                </Text>
               )}
             </View>
           </View>
@@ -136,17 +144,15 @@ const Index = () => {
                 </Text>
               </View>
             </View>
-       ) : (
-  <View>
-    <Text className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">
-      Total Classes
-    </Text>
+          ) : (
+            <View>
+              <Text className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">
+                Total Classes
+              </Text>
 
-    <Text className="text-xl font-bold text-white">
-      {classCount}
-    </Text>
-  </View>
-)}
+              <Text className="text-xl font-bold text-white">{classCount}</Text>
+            </View>
+          )}
 
           {/* TEACHER BADGE */}
 
@@ -169,13 +175,12 @@ const Index = () => {
 
         <View className="flex-row justify-between items-center mb-6">
           <View>
-           <Text className="text-2xl font-black text-foreground">
-  Upcoming
-</Text>
+            <Text className="text-2xl font-black text-foreground">
+              Upcoming
+            </Text>
 
             <View className="h-1 w-10 bg-primary rounded-full mt-1" />
           </View>
-
         </View>
 
         {/* ======================================================
@@ -213,8 +218,6 @@ const Index = () => {
           </Text>
 
           <View className="flex-row mt-8">
-          
-
             <View className="flex-row items-center bg-slate-50 px-4 py-3 rounded-2xl">
               <Ionicons name="people-outline" size={18} color="#64748b" />
 
