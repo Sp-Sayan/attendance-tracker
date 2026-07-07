@@ -3,6 +3,7 @@ import {
     markAttendanceService,
     endAttendanceSessionService,
     fetchActiveAttendanceSessionService,
+    exportAttendanceService,
 } from "../services/attendance.service.js";
 
 export const createAttendanceSession = async (req, res) => {
@@ -87,6 +88,31 @@ export const fetchActiveAttendanceSession = async (req, res) => {
         res.status(500).json({ message: "Internal Server Error" });
     }
 };
+
+export const exportAttendance = async (req, res) => {
+    try {
+        const { classId, fromDate, toDate } = req.body;
+        if (!fromDate || !toDate) {
+            return res.status(400).json({ message: "Please provide both fromDate and toDate" });
+        }
+        const { workbook, classCode } = await exportAttendanceService({ classId, fromDate, toDate });
+
+        res.setHeader(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename=${classCode}.xlsx`
+        );
+        await workbook.xlsx.write(res);
+        res.end();
+
+    } catch (error) {
+        console.error("Error exporting attendance:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+}
 
 // export const generateAttendanceReport = async (req, res) => {
 //     try {

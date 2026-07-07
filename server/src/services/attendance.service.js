@@ -1,5 +1,7 @@
 import prisma from "../config/prisma.js";
+import { generateAttendanceWorkbook } from "../utils/excel.util.js";
 import { fetchClassById } from "./class.service.js";
+import { format } from "date-fns";
 
 /* ======================================================
    CREATE ATTENDANCE SESSION
@@ -209,25 +211,113 @@ export const fetchActiveAttendanceSessionService =
 //    GENERATE REPORT
 // ====================================================== */
 
-// export const generateAttendanceReportService =
-//     async ({
-//         fromDate,
-//         toDate,
-//     }) => {
+export const exportAttendanceService =
+    async ({
+        classId,
+        fromDate,
+        toDate,
+    }) => {
 
-//         const attendanceRecords =
-//             await prisma.attendance.findMany({
-//                 where: {
-//                     createdAt: {
-//                         gte: new Date(fromDate),
-//                         lte: new Date(toDate),
-//                     },
-//                 },
+        //get enrolled students
+        const enrolledStudents = await prisma.userClass.findMany({
+            where: {
+                classId
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        institutionId: true,
+                        name: true
+                    }
+                },
+                class: {
+                    select: {
+                        subjectCode: true
+                    }
+                }
+            },
+            orderBy: {
+                user: {
+                    institutionId: "asc"
+                },
 
-//                 orderBy: {
-//                     createdAt: "desc",
-//                 },
-//             });
+            }
+        })
 
-//         return attendanceRecords;
-//     };
+
+
+        //Get sessions
+        const sessionsConducted = await prisma.attendanceSession.findMany({
+            where: {
+                classId,
+                date: {
+                    gte: new Date(fromDate),
+                    lte: new Date(toDate)
+                },
+            },
+            orderBy: {
+                date: "asc"
+            }
+        })
+
+
+
+        //count sessions
+        const totalSessions = sessionsConducted.length;
+        //get session ids
+        const sessionIds = sessionsConducted.map(s => s.sessionId);
+        //get class code
+        const classCode = enrolledStudents[0].class.subjectCode;
+
+
+        //fetch all attendance records
+        const attendanceRecords = await prisma.attendance.findMany({
+            where: {
+                sessionId: {
+                    in: sessionIds
+                }
+            }
+        })
+
+        // console.log(attendanceRecords);
+
+        //count attendance for each student
+        const attendanceMap = {};
+
+        attendanceRecords.forEach(record => {
+            attendanceMap[record.studentId] =
+                (attendanceMap[record.studentId] || 0) + 1;
+        });
+
+        // console.log(attendanceMap);
+
+        //data for excel
+        const report = enrolledStudents.map((student, index) => {
+            const present = attendanceMap[student.user.id] || 0;
+
+            const percentage =
+                totalSessions === 0
+                    ? 0
+                    : (present / totalSessions) * 100;
+
+            return {
+                serial: index + 1,
+                institutionId: student.user.institutionId.toString(),
+                name: student.user.name,
+                fromDate: format(new Date(fromDate), "dd-MM-yyyy"),
+                toDate: format(new Date(toDate), "dd-MM-yyyy"),
+                present,
+                totalSessions,
+                attendancePercentage: `${percentage.toFixed(2)}%`,
+                status: percentage >= 75 ? "Eligible for CA" : "Defaulter",
+            };
+        });
+
+        const workbook = await generateAttendanceWorkbook(report, classCode);
+
+        return {
+            workbook,
+            classCode
+        };
+    };

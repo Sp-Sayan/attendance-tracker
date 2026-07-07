@@ -25,7 +25,10 @@ import {
   createSession,
   endSession,
 } from "@/redux/slice/attendanceSessionSlice";
-import { markAttendance } from "@/redux/slice/attendanceSlice";
+import {
+  generateAttendanceReport,
+  markAttendance,
+} from "@/redux/slice/attendanceSlice";
 
 enum OTPState {
   PENDING = "PENDING",
@@ -377,8 +380,20 @@ const Attendance: React.FC = () => {
   const handleGenerateReport = async () => {
     if (!isReportReady) return;
     setIsGeneratingReport(true);
-    // TODO: Call your report generation API here
-    setTimeout(() => {
+
+    const data: {
+      classId: string;
+      className: string;
+      fromDate: string;
+      toDate: string;
+    } = {
+      classId: classID,
+      className,
+      fromDate: String(reportStartDate),
+      toDate: String(reportEndDate),
+    };
+    const result = await dispatch(generateAttendanceReport(data));
+    if (generateAttendanceReport.fulfilled.match(result)) {
       setIsGeneratingReport(false);
       setShowReportModal(false);
       setReportStartDate(null);
@@ -387,7 +402,15 @@ const Attendance: React.FC = () => {
         "Report Generated",
         "The attendance report has been generated successfully.",
       );
-    }, 2500);
+    } else {
+      setIsGeneratingReport(false);
+      setReportStartDate(null);
+      setReportEndDate(null);
+      Alert.alert(
+        "Report Generation Failed",
+        "The attendance report could not be generated. Please try again.",
+      );
+    }
   };
 
   return (
@@ -501,15 +524,17 @@ const Attendance: React.FC = () => {
             )}
 
           <TouchableOpacity
-            onPress={() => !isBlockedByOtherSession && setShowDropdown(!showDropdown)}
+            onPress={() =>
+              !isBlockedByOtherSession && setShowDropdown(!showDropdown)
+            }
             activeOpacity={isBlockedByOtherSession ? 1 : 0.8}
             disabled={isBlockedByOtherSession}
             className={`flex-row justify-between items-center rounded-[24px] px-6 py-6 border-2 transition-all shadow-sm ${
               isBlockedByOtherSession
                 ? "bg-slate-100 border-slate-200 opacity-50"
                 : selectedRoom
-                ? "bg-white border-primary"
-                : "bg-white border-slate-100"
+                  ? "bg-white border-primary"
+                  : "bg-white border-slate-100"
             }`}
           >
             <View className="flex-row items-center">
@@ -519,7 +544,11 @@ const Attendance: React.FC = () => {
                 <Ionicons
                   name="location"
                   size={20}
-                  color={selectedRoom && !isBlockedByOtherSession ? "#059669" : "#94a3b8"}
+                  color={
+                    selectedRoom && !isBlockedByOtherSession
+                      ? "#059669"
+                      : "#94a3b8"
+                  }
                 />
               </View>
               <Text
@@ -581,10 +610,10 @@ const Attendance: React.FC = () => {
                     isBlockedByOtherSession
                       ? "opacity-40"
                       : selectedRoom
-                      ? isAttendanceEnabled
-                        ? "shadow-amber-400/40"
-                        : "shadow-primary/40"
-                      : ""
+                        ? isAttendanceEnabled
+                          ? "shadow-amber-400/40"
+                          : "shadow-primary/40"
+                        : ""
                   }`}
                 >
                   <View
@@ -592,16 +621,20 @@ const Attendance: React.FC = () => {
                       isBlockedByOtherSession
                         ? "bg-slate-300"
                         : selectedRoom
-                        ? isAttendanceEnabled
-                          ? "bg-amber-500"
-                          : "bg-primary"
-                        : "bg-slate-200"
+                          ? isAttendanceEnabled
+                            ? "bg-amber-500"
+                            : "bg-primary"
+                          : "bg-slate-200"
                     }`}
                   >
                     <Ionicons
                       name={isAttendanceEnabled ? "stop-circle" : "play-circle"}
                       size={28}
-                      color={selectedRoom && !isBlockedByOtherSession ? "white" : "#94a3b8"}
+                      color={
+                        selectedRoom && !isBlockedByOtherSession
+                          ? "white"
+                          : "#94a3b8"
+                      }
                     />
                     <Text
                       className={`ml-4 text-xl font-black tracking-wide ${
@@ -877,7 +910,10 @@ const Attendance: React.FC = () => {
                 maximumDate={reportEndDate ?? new Date()}
                 onChange={(_, date) => {
                   setShowStartPicker(Platform.OS === "ios");
-                  if (date) setReportStartDate(date);
+                  if (date) {
+                    date.setHours(0, 0, 0, 0);
+                    setReportStartDate(new Date(date));
+                  }
                 }}
               />
             )}
@@ -920,7 +956,10 @@ const Attendance: React.FC = () => {
                 maximumDate={new Date()}
                 onChange={(_, date) => {
                   setShowEndPicker(Platform.OS === "ios");
-                  if (date) setReportEndDate(date);
+                  if (date) {
+                    date.setHours(23, 59, 59, 999);
+                    setReportEndDate(date);
+                  }
                 }}
               />
             )}

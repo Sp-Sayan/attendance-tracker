@@ -15,7 +15,7 @@ export const validateOtp = async (req, res, next) => {
         });
 
         if (!session) {
-            return res.status(400).json({ message: "Invalid OTP or Room Number" });
+            return res.status(400).json({ message: "Invalid OTP or Room Number. Please ensure session is active" });
         }
 
         //add session to request

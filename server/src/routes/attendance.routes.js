@@ -5,6 +5,7 @@ import {
     markAttendance,
     endAttendanceSession,
     fetchActiveAttendanceSession,
+    exportAttendance
 } from "../controllers/attendance.controller.js";
 
 import {
@@ -50,12 +51,12 @@ router.get(
 );
 
 
-// router.post(
-//     "/generate-report",
-//     protectRoute,
-//     userIsTeacher,
-//     generateAttendanceReport,
-// );
+router.post(
+    "/export",
+    protectRoute,
+    userIsTeacher,
+    exportAttendance
+);
 
 
 

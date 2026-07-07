@@ -28,7 +28,9 @@ const Index = () => {
   };
 
   const handleActiveSessionFetch = async () => {
-    await dispatch(fetchActiveSession());
+    if (currentUser?.role?.toUpperCase() === "TEACHER") {
+      await dispatch(fetchActiveSession());
+    }
   };
 
   useEffect(() => {

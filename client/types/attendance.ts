@@ -11,5 +11,6 @@ export interface AttendanceSession {
 
 export interface AttendanceState {
   isMarking: boolean;
+  isGeneratingReport: boolean;
   error: string | null;
 }
