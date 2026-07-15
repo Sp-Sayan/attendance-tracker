@@ -31,6 +31,8 @@ import {
   fetchClassrooms,
 } from "@/redux/slice/classroomSlice";
 
+const DEPARTMENTS = ["CSE", "ECE", "EE", "IT", "ME"];
+
 export default function ClassScreen() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
 
@@ -64,6 +66,8 @@ export default function ClassScreen() {
 
   const [generatedId, setGeneratedId] = useState<string | null>(null);
 
+  const [isDeptDropdownOpen, setIsDeptDropdownOpen] = useState(false);
+
   /* ======================================================
      REDUX
   ====================================================== */
@@ -75,6 +79,10 @@ export default function ClassScreen() {
   const currentUser = useAppSelector((state) => state.auth.authUser);
 
   const isEnrolling = useAppSelector((state) => state.classroom.isEnrolling);
+
+  const isCreatingClass = useAppSelector(
+    (state) => state.classroom.isCreatingClass,
+  );
 
   const dispatch = useAppDispatch();
 
@@ -347,7 +355,6 @@ export default function ClassScreen() {
           >
             <View className="bg-background rounded-t-[40px] px-6 pt-6 pb-10 max-h-[90%]">
               <ScrollView
-                scrollEnabled={role === "TEACHER" && !generatedId}
                 bounces={false}
                 showsVerticalScrollIndicator={false}
               >
@@ -370,6 +377,7 @@ export default function ClassScreen() {
                     onPress={() => {
                       setFormVisible(false);
                       setGeneratedId(null);
+                      setIsDeptDropdownOpen(false);
                     }}
                     className="w-12 h-12 rounded-2xl bg-slate-100 items-center justify-center"
                   >
@@ -390,13 +398,48 @@ export default function ClassScreen() {
                         Department
                       </Text>
 
-                      <TextInput
-                        placeholder="Department"
-                        value={department}
-                        onChangeText={setDepartment}
-                        placeholderTextColor="#94a3b8"
-                        className="bg-white p-5 rounded-3xl border border-border text-foreground text-base"
-                      />
+                      <TouchableOpacity
+                        onPress={() => setIsDeptDropdownOpen(!isDeptDropdownOpen)}
+                        activeOpacity={0.8}
+                        className="bg-white p-5 rounded-3xl border border-border flex-row justify-between items-center"
+                      >
+                        <Text className={`text-base font-semibold ${department ? 'text-foreground' : 'text-slate-400'}`}>
+                          {department || "Select Department"}
+                        </Text>
+                        <Ionicons
+                          name={isDeptDropdownOpen ? "chevron-up" : "chevron-down"}
+                          size={20}
+                          color="#94a3b8"
+                        />
+                      </TouchableOpacity>
+
+                      {isDeptDropdownOpen && (
+                        <View className="mt-2 bg-white rounded-3xl border border-border overflow-hidden shadow-sm">
+                          {DEPARTMENTS.map((dept) => (
+                            <TouchableOpacity
+                              key={dept}
+                              onPress={() => {
+                                setDepartment(dept);
+                                setIsDeptDropdownOpen(false);
+                              }}
+                              className={`p-4 border-b border-border/50 flex-row justify-between items-center ${
+                                department === dept ? "bg-primary/5" : ""
+                              }`}
+                            >
+                              <Text
+                                className={`text-base font-bold ${
+                                  department === dept ? "text-primary" : "text-foreground"
+                                }`}
+                              >
+                                {dept}
+                              </Text>
+                              {department === dept && (
+                                <Ionicons name="checkmark" size={20} color="#059669" />
+                              )}
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
                     </View>
 
                     {/* Section */}
@@ -448,14 +491,16 @@ export default function ClassScreen() {
                     </View>
 
                     <TouchableOpacity
-                      disabled={!isCreateValid}
+                      disabled={!isCreateValid || isCreatingClass}
                       onPress={handleCreate}
                       className={`p-5 rounded-3xl items-center ${
-                        isCreateValid ? "bg-primary" : "bg-slate-300"
+                        !isCreateValid || isCreatingClass
+                          ? "bg-slate-300"
+                          : "bg-primary"
                       }`}
                     >
                       <Text className="text-white font-black text-lg">
-                        Create Class
+                        {isCreatingClass ? "Creating..." : "Create Class"}
                       </Text>
                     </TouchableOpacity>
                   </View>
